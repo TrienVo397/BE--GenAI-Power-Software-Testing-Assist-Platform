@@ -4,3 +4,21 @@ venv/
 env/
 .env/
 *.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Django
+*.log
+local_settings.py
+# db.sqlite3
+media/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
