@@ -1,24 +1,53 @@
-# Ignore virtual environment and environment files/folders
-venv/
-.venv/
-env/
-.env/
-*.env
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
-.Python
 
-# Django
-*.log
-local_settings.py
-# db.sqlite3
-media/
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
 
-# IDE files
+# Virtual environments
+venv/
+env/
+ENV/
+.env
+.venv
+env.bak/
+venv.bak/
+
+# IDE specific files
 .idea/
 .vscode/
 *.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Logs
+*.log
+
+# Local configuration
+.local/
+local_settings.py
+
+# Database
+*.sqlite3
+*.db
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
