@@ -23,15 +23,8 @@ def create_document_version(doc_version: DocumentVersionCreate, db: Session = De
         )
         
     # Create document version
+    # Note: document_version_crud.create will handle making this the current version if necessary
     db_doc_version = document_version_crud.create(db=db, doc_version=doc_version)
-    
-    # If this is the current version, update the project's current_version reference
-    if doc_version.is_current:
-        project.current_version = db_doc_version.id
-        db.add(project)
-        db.commit()
-        db.refresh(project)
-        
     return db_doc_version
 
 @router.get("/{doc_version_id}", response_model=DocumentVersionRead)
@@ -93,24 +86,16 @@ def update_document_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document version not found"
         )
-    
-    # Save project ID before updating
-    project_id = db_doc_version.project_id
-    
-    # Update the document version
+      # Update the document version
+    # Note: document_version_crud.update will handle making this the current version if necessary
     updated_version = document_version_crud.update(
         db=db, doc_version=doc_version, doc_version_id=doc_version_id
     )
-    
-    # Handle current version status
-    if hasattr(doc_version, "is_current") and doc_version.is_current:
-        # Get the project and update its current_version
-        project = project_crud.get(db, project_id=project_id)
-        if project:
-            project.current_version = doc_version_id
-            db.add(project)
-            db.commit()
-            db.refresh(project)
+    if not updated_version:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document version not found"
+        )
     
     return updated_version
 

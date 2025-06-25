@@ -32,27 +32,72 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
-    # Create new user
+      # Create new user
     user_create = UserCreate(
         username=user_data.username,
         email=user_data.email,
         password=user_data.password,
         full_name=user_data.full_name
     )
+      # Create the user, which will also create the credential
+    new_user = user_crud.create(db=db, user=user_create)
     
-    return user_crud.create(db=db, user=user_create)
+    return new_user
 
 @router.post("/login", response_model=Token)
 def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """OAuth2 login with username and password form data"""
+    from app.crud.credential_crud import credential_crud
+    
     user = user_crud.get_by_username(db, form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    # Get user's credential
+    credential = credential_crud.get_by_user_id(db, user.id)
+    if not credential or not verify_password(form_data.password, credential.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/token", response_model=Token)
+def login_for_access_token(user_login: UserLogin, db: Session = Depends(get_db)):
+    """JSON login with username and password"""
+    from app.crud.credential_crud import credential_crud
+    
+    user = user_crud.get_by_username(db, user_login.username)
+    if not user or not user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    # Get user's credential
+    credential = credential_crud.get_by_user_id(db, user.id)
+    if not credential or not verify_password(user_login.password, credential.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)},

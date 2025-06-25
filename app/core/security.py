@@ -5,7 +5,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.api.deps import get_db
 
@@ -34,9 +34,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -62,7 +62,11 @@ async def get_current_user(db: Session = Depends(get_db), token: str = Depends(o
     user_id = payload.get("sub") if payload else None
     if not user_id:
         raise credentials_exception
-    user = user_crud.get(db, user_id=user_id)
-    if not user:
+    try:
+        import uuid
+        user = user_crud.get(db, user_id=uuid.UUID(user_id))
+        if not user:
+            raise credentials_exception
+        return user
+    except (ValueError, TypeError):
         raise credentials_exception
-    return user
