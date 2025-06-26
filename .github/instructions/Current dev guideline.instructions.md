@@ -11,6 +11,7 @@ Coding standards, domain knowledge, and preferences that AI should follow.
   - Simply run `python manage.py reset-db` to reset the database
   - This command will recreate the database structure based on current model definitions
   - Run this command after any database model changes to apply them
+  - Do not make the test suit or file, as it is not required for this project
 
 ## Data Validation
 
