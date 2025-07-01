@@ -1,0 +1,25 @@
+# PRIORITY RULES (Allowed values):
+# - "Critical" (Blocks release if failed)
+# - "High" (Core functionality)
+# - "Medium" (Important but workarounds exist)
+# - "Low" (Cosmetic/nice-to-have)
+
+# CATEGORY RULES (Allowed values):
+# - "Functional" (Business logic, e.g., login, payments)
+# - "Performance" (Speed, load, scalability)
+# - "Security" (Auth, encryption, vulnerabilities)
+# - "Compatibility" (Cross-browser/device tests)
+# - "Usability" (UX/accessibility)
+
+checklist:
+  - id: "TC-001" # Unique test case identifier (alphanumeric)
+    requirement: "User Login" # Linked requirement/feature name
+    scenario: "Valid credentials login" # Brief test objective
+    priority: "High" # MUST follow PRIORITY RULES above
+    type: "Functional"  # MUST follow CATEGORY RULES above
+  
+  - id: "TC-002"
+    requirement: "API Performance"
+    scenario: "Response time <500ms (100 users)"
+    priority: "Medium"
+    type: "Performance"

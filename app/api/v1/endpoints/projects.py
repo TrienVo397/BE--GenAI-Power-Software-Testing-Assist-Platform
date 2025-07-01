@@ -3,11 +3,12 @@ from sqlmodel import Session
 from typing import List, Optional
 import uuid
 
-from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.schemas.project_simple import ProjectCreateSimple
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate, ProjectCreateSimple
 from app.schemas.document_version import DocumentVersionCreate
+from app.schemas.project_artifact import ProjectArtifactCreate
 from app.crud.project_crud import project_crud
 from app.crud.document_version_crud import document_version_crud
+from app.crud.project_artifact_crud import project_artifact_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
 from app.models.user import User
@@ -56,16 +57,41 @@ def create_project(
     )
     
     # Create the document version
-    doc_version = document_version_crud.create(db=db, doc_version=initial_version)
+    doc_version = document_version_crud.create(db=db, doc_version=initial_version, current_user=current_user)
+    
+    # Create default project artifacts
+    checklist_artifact = ProjectArtifactCreate(
+        project_id=new_project.id,
+        based_on_version=doc_version.id,
+        artifact_type="checklist",
+        file_path="artifacts/checklist.md",
+        note="Initial checklist template",
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
+    testcases_artifact = ProjectArtifactCreate(
+        project_id=new_project.id,
+        based_on_version=doc_version.id,
+        artifact_type="testcases",
+        file_path="artifacts/testcase.md",
+        note="Initial test cases template",
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
+    # Create the artifacts
+    project_artifact_crud.create(db=db, obj_in=checklist_artifact)
+    project_artifact_crud.create(db=db, obj_in=testcases_artifact)
     
     # Update the project with the new version and get the refreshed project
     new_project = project_crud.update(
         db=db,
         project=ProjectUpdate(
-            current_version=doc_version.id,
-            updated_by=current_user.id
+            current_version=doc_version.id
         ),
-        project_id=new_project.id
+        project_id=new_project.id,
+        user_id=current_user.id
     )
     
     return new_project
@@ -101,7 +127,12 @@ def read_projects(
     return projects
 
 @router.put("/{project_id}", response_model=ProjectRead)
-def update_project(project_id: uuid.UUID, project: ProjectUpdate, db: Session = Depends(get_db)):
+def update_project(
+    project_id: uuid.UUID, 
+    project: ProjectUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Require JWT authentication
+):
     """Update project"""
     db_project = project_crud.get(db, project_id=project_id)
     if db_project is None:
@@ -109,10 +140,15 @@ def update_project(project_id: uuid.UUID, project: ProjectUpdate, db: Session = 
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Project not found"
         )
-    return project_crud.update(db=db, project=project, project_id=project_id)
+    # Use the updated CRUD method that accepts user_id
+    return project_crud.update(db=db, project=project, project_id=project_id, user_id=current_user.id)
 
 @router.delete("/{project_id}", response_model=ProjectRead)
-def delete_project(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_project(
+    project_id: uuid.UUID, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Require JWT authentication
+):
     """Delete project"""
     db_project = project_crud.get(db, project_id=project_id)
     if db_project is None:

@@ -26,7 +26,7 @@ def create_project_directory_structure(project_id):
     │   └── testcase.yml
     ├── artifacts/           # Current outputs
     │   ├── checklist.md
-    │   └── testcases.md
+    │   └── testcase.md
     └── versions/            # Versioned documents
         ├── v0/
         │   └── srs.pdf
@@ -56,21 +56,37 @@ def create_project_directory_structure(project_id):
     os.makedirs(project_dir / "templates", exist_ok=True)
     os.makedirs(project_dir / "artifacts", exist_ok=True)
     os.makedirs(project_dir / "versions" / "v0", exist_ok=True)
-    os.makedirs(project_dir / "versions" / "v1", exist_ok=True)
-    os.makedirs(project_dir / "versions" / "v2", exist_ok=True)
     
-    # Create empty template files
-    with open(project_dir / "templates" / "checklist.yml", "w") as f:
-        f.write("# Checklist template\n")
+    # Copy default template files to project templates
+    default_templates_dir = base_dir / "default" / "templates"
     
-    with open(project_dir / "templates" / "testcase.yml", "w") as f:
-        f.write("# Test case template\n")
+    # Copy checklist template
+    if (default_templates_dir / "checklist.yml").exists():
+        shutil.copy2(
+            default_templates_dir / "checklist.yml", 
+            project_dir / "templates" / "checklist.yml"
+        )
+    else:
+        # Create empty template if default doesn't exist
+        with open(project_dir / "templates" / "checklist.yml", "w") as f:
+            f.write("# Checklist template\n")
+    
+    # Copy testcase template
+    if (default_templates_dir / "testcase.yml").exists():
+        shutil.copy2(
+            default_templates_dir / "testcase.yml", 
+            project_dir / "templates" / "testcase.yml"
+        )
+    else:
+        # Create empty template if default doesn't exist
+        with open(project_dir / "templates" / "testcase.yml", "w") as f:
+            f.write("# Test case template\n")
     
     # Create empty artifact files
     with open(project_dir / "artifacts" / "checklist.md", "w") as f:
         f.write("# Generated Checklist\n")
     
-    with open(project_dir / "artifacts" / "testcases.md", "w") as f:
+    with open(project_dir / "artifacts" / "testcase.md", "w") as f:
         f.write("# Generated Test Cases\n")
     
     # Initialize git repository

@@ -12,7 +12,7 @@ This directory contains the data for all projects. Each project has its own dire
 │   └── testcase.yml
 ├── artifacts/           # Current outputs
 │   ├── checklist.md
-│   └── testcases.md
+│   └── testcase.md
 └── versions/            # Versioned documents
     ├── v1.0/
     │   └── srs.pdf

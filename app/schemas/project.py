@@ -14,15 +14,19 @@ class ProjectBase(BaseModel):
 class ProjectCreate(ProjectBase):
     created_by: uuid.UUID
     updated_by: uuid.UUID
+    
+# Schema for creating a simple project (without repo_path)
+class ProjectCreateSimple(BaseModel):
+    name: str
+    meta_data: Optional[str] = None
+    note: Optional[str] = None
 
 # Schema for updating an existing project
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
-    repo_path: Optional[str] = None
     current_version: Optional[uuid.UUID] = None
     meta_data: Optional[str] = None  # Changed from project_metadata to match model/ER diagram
     note: Optional[str] = None
-    updated_by: uuid.UUID
 
 # Schema for reading project data
 class ProjectRead(ProjectBase):

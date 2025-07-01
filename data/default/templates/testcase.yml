@@ -1,0 +1,16 @@
+# Test case template
+testcases:
+  - id: "TC-001"               # Unique identifier (based on checklist)
+    objective: "Verify user login with valid credentials"  # Clear purpose
+    preconditions:                      # Prerequisites
+      - "User is registered"
+      - "Login page is accessible"
+    test_steps:                        # Sequential steps
+      - "1. Navigate to login page"
+      - "2. Enter valid username/password"
+      - "3. Click 'Login'"
+    expected_results:                   # Expected outcomes
+      - "Home page is displayed"
+      - "Welcome message appears"
+    priority: "High"                    # Criticality (based on checklist)
+    type: "Functional"             # Test type (based on checklist)
