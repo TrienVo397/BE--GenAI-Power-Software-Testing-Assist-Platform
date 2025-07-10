@@ -4,5 +4,6 @@ from .project import Project
 from .document_version import DocumentVersion
 from .credential import Credential
 from .project_artifact import ProjectArtifact
+from .chat import ChatSession, ChatMessage
 
-__all__ = ["User", "Project", "DocumentVersion", "Credential", "ProjectArtifact"]
+__all__ = ["User", "Project", "DocumentVersion", "Credential", "ProjectArtifact", "ChatSession", "ChatMessage"]

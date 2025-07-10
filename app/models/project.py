@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from .document_version import DocumentVersion
     from .project_artifact import ProjectArtifact
     from .user import User
+    from .chat import ChatSession
 
 class Project(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -20,6 +21,9 @@ class Project(SQLModel, table=True):
     created_by: uuid.UUID = Field(foreign_key="user.id", nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_by: uuid.UUID = Field(foreign_key="user.id", nullable=False)
+    
+    # Chats associated with this project
+    chats: List["ChatSession"] = Relationship(back_populates="project")
     
     # Relationship with all document versions of this project
     document_versions: List["DocumentVersion"] = Relationship(

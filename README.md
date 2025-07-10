@@ -13,6 +13,7 @@ A modern, production-ready FastAPI backend template built with SQLModel, providi
 - **Environment Configuration**: Pydantic settings management
 - **CORS Support**: Cross-origin resource sharing configuration
 - **Structured Architecture**: Clean separation of concerns
+- **LangGraph Integration**: Agent orchestration using LangGraph
 
 ## Project Structure
 

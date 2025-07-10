@@ -9,5 +9,5 @@ __all__ = [
     "ProjectBase", "ProjectCreate", "ProjectUpdate", "ProjectRead",
     "DocumentVersionBase", "DocumentVersionCreate", "DocumentVersionUpdate", "DocumentVersionRead",
     "ProjectArtifactBase", "ProjectArtifactCreate", "ProjectArtifactUpdate", "ProjectArtifactRead",
-    "TextContentUpdate", "FileInfo", "FileResponse", "DirectoryResponse", "TextFileContent", "FileListResponse"
+    "TextContentUpdate", "FileInfo", "FileResponse", "DirectoryResponse", "TextFileContent", "FileListResponse",
 ]

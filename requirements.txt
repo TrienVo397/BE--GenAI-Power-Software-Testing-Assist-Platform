@@ -1,6 +1,6 @@
 fastapi
 sqlmodel
-uvicorn
+uvicorn[standard]
 pydantic[email]
 pydantic-settings
 alembic
@@ -12,3 +12,14 @@ python-jose
 argon2-cffi
 python-multipart
 click
+aiohttp
+sse-starlette
+jinja2
+deepseek
+langchain
+langchain-core
+langchain-community
+langchain-deepseek
+langgraph
+sqlite-utils
+websockets

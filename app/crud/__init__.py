@@ -12,5 +12,5 @@ __all__ = [
     "project_crud", 
     "credential_crud", 
     "document_version_crud",
-    "project_artifact_crud"
+    "project_artifact_crud",
 ]

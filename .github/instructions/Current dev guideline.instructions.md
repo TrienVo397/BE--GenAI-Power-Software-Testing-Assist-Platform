@@ -3,6 +3,10 @@ applyTo: '**'
 ---
 Coding standards, domain knowledge, and preferences that AI should follow.
 
+## Run Python
+- Run Python code in a virtual environment (venv) in the root folder to avoid conflicts with system packages.
+- I will doing the terminal command manually, so no need to automate this.
+
 ## Project Structure and AI Indexing Guidelines
 
 This is a FastAPI-based backend service for a GenAI-powered software testing assistance platform. The project follows a clean architecture pattern with clear separation of concerns.

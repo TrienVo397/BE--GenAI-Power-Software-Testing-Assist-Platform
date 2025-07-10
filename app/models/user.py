@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .project import Project
     from .document_version import DocumentVersion
     from .project_artifact import ProjectArtifact
+    from .chat import ChatSession
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -22,6 +23,9 @@ class User(SQLModel, table=True):
     
     # Relationships
     credential: Optional["Credential"] = Relationship(back_populates="user")
+    
+    # Chats
+    chats: List["ChatSession"] = Relationship(back_populates="user")
     
     # Projects created by this user
     created_projects: List["Project"] = Relationship(
@@ -58,4 +62,3 @@ class User(SQLModel, table=True):
         back_populates="updater",
         sa_relationship_kwargs={"foreign_keys": "[ProjectArtifact.updated_by]"}
     )
-    
