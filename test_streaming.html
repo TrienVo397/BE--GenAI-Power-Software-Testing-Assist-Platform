@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat API Streaming Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .login-section {
+            border: 2px solid #4CAF50;
+        }
+        
+        .chat-section {
+            border: 2px solid #2196F3;
+        }
+        
+        .status-section {
+            border: 2px solid #FF9800;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .stream-button {
+            background-color: #2196F3;
+        }
+        
+        .stream-button:hover {
+            background-color: #1976D2;
+        }
+        
+        .danger-button {
+            background-color: #f44336;
+        }
+        
+        .danger-button:hover {
+            background-color: #d32f2f;
+        }
+        
+        .messages-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            margin-bottom: 15px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .message.user {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .message.ai {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        
+        .message.streaming {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .message.error {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+        
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .message-content {
+            word-wrap: break-word;
+        }
+        
+        .status-info {
+            background-color: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .status-info.error {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .status-info.success {
+            background-color: #e8f5e8;
+            color: #388e3c;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .log-entry {
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+        }
+        
+        .log-entry.error {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .log-entry.success {
+            background-color: #e8f5e8;
+            color: #388e3c;
+        }
+        
+        .log-entry.info {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat API Streaming Test</h1>
+    
+    <!-- Login Section -->
+    <div class="container login-section">
+        <h2>🔐 Authentication</h2>
+        <div class="form-group">
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="http://localhost:8000">
+        </div>
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" value="test@example.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="password123">
+        </div>
+        <button onclick="login()">Login</button>
+        <div id="loginStatus" class="status-info" style="display: none;"></div>
+    </div>
+    
+    <div class="two-column">
+        <!-- Chat Section -->
+        <div class="container chat-section">
+            <h2>💬 Chat Interface</h2>
+            <div class="form-group">
+                <label for="sessionTitle">Session Title:</label>
+                <input type="text" id="sessionTitle" value="Test Chat Session">
+            </div>
+            <button onclick="createSession()">Create New Session</button>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="sessionId">Session ID:</label>
+                <input type="text" id="sessionId" readonly>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="message">
+                    <div class="message-header">System</div>
+                    <div class="message-content">Create a session and start chatting!</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageInput">Message:</label>
+                <textarea id="messageInput" rows="3" placeholder="Type your message here..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <button onclick="sendMessage()" class="stream-button">Send Message (Regular)</button>
+                <button onclick="sendStreamingMessage()" class="stream-button" style="margin-top: 10px;">Send Message (Streaming)</button>
+                <button onclick="stopStreaming()" class="danger-button" style="margin-top: 10px;">Stop Streaming</button>
+            </div>
+        </div>
+        
+        <!-- Status Section -->
+        <div class="container status-section">
+            <h2>📊 Status & Logs</h2>
+            <div class="form-group">
+                <label>Connection Status:</label>
+                <div id="connectionStatus" class="status-info">Not connected</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Current Session:</label>
+                <div id="currentSession" class="status-info">No session</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Streaming Status:</label>
+                <div id="streamingStatus" class="status-info">Not streaming</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Activity Log:</label>
+                <div id="activityLog" class="messages-container" style="height: 300px;"></div>
+            </div>
+            
+            <button onclick="clearLog()" class="danger-button">Clear Log</button>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let authToken = null;
+        let currentSessionId = null;
+        let eventSource = null;
+        let serverUrl = 'http://localhost:8000';
+        
+        // Logging utility
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('activityLog');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('activityLog').innerHTML = '';
+        }
+        
+        // Update connection status
+        function updateConnectionStatus(status, isError = false) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = status;
+            statusDiv.className = `status-info ${isError ? 'error' : 'success'}`;
+        }
+        
+        // Update streaming status
+        function updateStreamingStatus(status, isError = false) {
+            const statusDiv = document.getElementById('streamingStatus');
+            statusDiv.textContent = status;
+            statusDiv.className = `status-info ${isError ? 'error' : 'success'}`;
+        }
+        
+        // Authentication
+        async function login() {
+            const url = document.getElementById('serverUrl').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!url || !username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            serverUrl = url;
+            log(`Attempting login to ${serverUrl}...`);
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/users/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    
+                    const statusDiv = document.getElementById('loginStatus');
+                    statusDiv.textContent = 'Login successful!';
+                    statusDiv.className = 'status-info success';
+                    statusDiv.style.display = 'block';
+                    
+                    updateConnectionStatus('Connected - Authenticated');
+                    log('Login successful', 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Login failed');
+                }
+            } catch (error) {
+                log(`Login failed: ${error.message}`, 'error');
+                updateConnectionStatus(`Login failed: ${error.message}`, true);
+                
+                const statusDiv = document.getElementById('loginStatus');
+                statusDiv.textContent = `Login failed: ${error.message}`;
+                statusDiv.className = 'status-info error';
+                statusDiv.style.display = 'block';
+            }
+        }
+        
+        // Create chat session
+        async function createSession() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const title = document.getElementById('sessionTitle').value.trim() || 'Test Chat Session';
+            log(`Creating new session: ${title}...`);
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/chat/sessions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        system_prompt: 'You are a helpful assistant.',
+                        project_id: null
+                    })
+                });
+                
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    currentSessionId = sessionData.id;
+                    
+                    document.getElementById('sessionId').value = currentSessionId;
+                    document.getElementById('currentSession').textContent = `${title} (${currentSessionId})`;
+                    document.getElementById('currentSession').className = 'status-info success';
+                    
+                    // Clear messages
+                    const messagesContainer = document.getElementById('messagesContainer');
+                    messagesContainer.innerHTML = '';
+                    
+                    log(`Session created: ${currentSessionId}`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to create session');
+                }
+            } catch (error) {
+                log(`Session creation failed: ${error.message}`, 'error');
+                alert(`Failed to create session: ${error.message}`);
+            }
+        }
+        
+        // Add message to UI
+        function addMessage(content, type = 'user', isStreaming = false) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type} ${isStreaming ? 'streaming' : ''}`;
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'message-header';
+            headerDiv.textContent = type === 'user' ? 'You' : (type === 'ai' ? 'AI Assistant' : 'System');
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(headerDiv);
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // Send regular message
+        async function sendMessage() {
+            if (!authToken || !currentSessionId) {
+                alert('Please login and create a session first');
+                return;
+            }
+            
+            const messageText = document.getElementById('messageInput').value.trim();
+            if (!messageText) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            log(`Sending message: ${messageText}`);
+            
+            // Add user message to UI
+            addMessage(messageText, 'user');
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/chat/sessions/${currentSessionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        content: messageText,
+                        message_type: 'human'
+                    })
+                });
+                
+                if (response.ok) {
+                    const responseData = await response.json();
+                    
+                    // Add AI response to UI
+                    if (responseData.ai_message) {
+                        addMessage(responseData.ai_message.content, 'ai');
+                    }
+                    
+                    // Clear input
+                    document.getElementById('messageInput').value = '';
+                    log('Message sent successfully', 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to send message');
+                }
+            } catch (error) {
+                log(`Message sending failed: ${error.message}`, 'error');
+                addMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Send streaming message
+        async function sendStreamingMessage() {
+            if (!authToken || !currentSessionId) {
+                alert('Please login and create a session first');
+                return;
+            }
+            
+            const messageText = document.getElementById('messageInput').value.trim();
+            if (!messageText) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            log(`Sending streaming message: ${messageText}`);
+            updateStreamingStatus('Initializing stream...');
+            
+            // Add user message to UI
+            addMessage(messageText, 'user');
+            
+            // Create streaming AI message placeholder
+            const aiMessageDiv = addMessage('', 'ai', true);
+            const aiContentDiv = aiMessageDiv.querySelector('.message-content');
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/chat/sessions/${currentSessionId}/messages/stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        content: messageText,
+                        message_type: 'human'
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to start streaming');
+                }
+                
+                updateStreamingStatus('Streaming active...');
+                log('Streaming started', 'success');
+                
+                // Process streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        updateStreamingStatus('Stream completed');
+                        log('Streaming completed', 'success');
+                        break;
+                    }
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Process complete messages
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleStreamingData(data, aiContentDiv);
+                            } catch (e) {
+                                log(`Error parsing streaming data: ${e.message}`, 'error');
+                            }
+                        }
+                    }
+                }
+                
+                // Remove streaming class when done
+                aiMessageDiv.classList.remove('streaming');
+                
+                // Clear input
+                document.getElementById('messageInput').value = '';
+                
+            } catch (error) {
+                log(`Streaming failed: ${error.message}`, 'error');
+                updateStreamingStatus(`Streaming failed: ${error.message}`, true);
+                aiContentDiv.textContent = `Error: ${error.message}`;
+                aiMessageDiv.classList.remove('streaming');
+                aiMessageDiv.classList.add('error');
+            }
+        }
+        
+        // Handle streaming data chunks
+        function handleStreamingData(data, contentDiv) {
+            if (data.type === 'message_start') {
+                log('Message stream started', 'info');
+                contentDiv.textContent = '▊'; // Cursor
+            } else if (data.type === 'content_chunk') {
+                // Update content with new chunk
+                contentDiv.textContent = data.content + '▊';
+                log(`Received chunk: ${data.delta}`, 'info');
+            } else if (data.type === 'message_end') {
+                // Remove cursor and finalize
+                contentDiv.textContent = data.content;
+                log('Message stream completed', 'success');
+            } else if (data.type === 'error') {
+                contentDiv.textContent = `Error: ${data.error}`;
+                log(`Stream error: ${data.error}`, 'error');
+            }
+            
+            // Auto-scroll to bottom
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Stop streaming
+        function stopStreaming() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateStreamingStatus('Streaming stopped');
+                log('Streaming stopped by user', 'info');
+            }
+        }
+        
+        // Handle Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Update server URL when changed
+        document.getElementById('serverUrl').addEventListener('change', function(e) {
+            serverUrl = e.target.value.trim();
+        });
+        
+        // Initialize
+        log('Chat API Test Interface loaded', 'success');
+        updateConnectionStatus('Not connected');
+        updateStreamingStatus('Not streaming');
+    </script>
+</body>
+</html>

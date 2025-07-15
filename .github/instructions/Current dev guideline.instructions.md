@@ -7,9 +7,15 @@ Coding standards, domain knowledge, and preferences that AI should follow.
 - Run Python code in a virtual environment (venv) in the root folder to avoid conflicts with system packages.
 - I will doing the terminal command manually, so no need to automate this.
 
+## Project Description
+This project is a tool AI that operates within project contexts, where testers:
+ - Manually upload documents to project knowledge bases
+ - Use conversational commands for test planning operations
+
 ## Project Structure and AI Indexing Guidelines
 
 This is a FastAPI-based backend service for a GenAI-powered software testing assistance platform. The project follows a clean architecture pattern with clear separation of concerns.
+This app will use Git to track changes in the project data file, so please ensure that all files in the data directory are properly versioned and committed between each changes.
 
 ### Core Directory Structure
 
