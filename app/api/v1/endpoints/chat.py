@@ -8,6 +8,7 @@ import math
 import json
 import asyncio
 from datetime import datetime
+import logging
 
 from app.schemas.chat import (
     ChatSessionCreate, ChatSessionRead, ChatSessionUpdate, ChatSessionWithMessages, ChatSessionCreateSimple,
@@ -20,9 +21,24 @@ from app.api.deps import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from app.core.config import settings
+import logging
 
 router = APIRouter()
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+
+# Load main system prompt
+def load_main_system_prompt() -> str:
+    """Load the main system prompt from file"""
+    try:
+        with open("ai/researchExample/Prompts/main_system_prompt.txt", "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.warning("Main system prompt file not found, using default")
+        return "You are a helpful QA testing assistant."
 
 # Chat Session Endpoints
 
@@ -259,18 +275,59 @@ def send_message(
         meta_data=message_input.meta_data or {}
     )
     
-    # TODO: Here you would integrate with your AI agent to generate a response
-    # For now, we'll create a simple AI response
+    # Generate AI response using centralized LLM functions
     ai_message = None
     if message_input.message_type == "human":
-        ai_message = chat_message_crud.create(
-            db=db,
-            chat_id=session_id,
-            content="This is a placeholder AI response. Integrate your AI agent here.",
-            message_type="ai",
-            parent_id=user_message.sequence_num,
-            meta_data={"generated": True}
-        )
+        try:
+            # Import here to avoid circular imports
+            from ai.agents.conversation_agent import get_agent_response
+            
+            # Get session data for context
+            session_data = chat_session_crud.get(db=db, chat_session_id=session_id)
+            if not session_data:
+                raise Exception("Session not found")
+                
+            # Get response using centralized function
+            use_agent = session_data.meta_data.get("use_agent", True) if session_data.meta_data else True
+            project_name = session_data.meta_data.get("project_name", "Default Project") if session_data.meta_data else "Default Project"
+            
+            ai_response, updated_agent_state = get_agent_response(
+                session_id=str(session_id),
+                user_message=message_input.content,
+                user_message_seq=user_message.sequence_num,
+                session_agent_state=session_data.agent_state,
+                project_name=project_name,
+                use_tools=use_agent
+            )
+            
+            # Update session with new agent state
+            chat_session_crud.update(
+                db=db,
+                chat_session_id=session_id,
+                agent_state=updated_agent_state
+            )
+            
+            # Create AI message
+            ai_message = chat_message_crud.create(
+                db=db,
+                chat_id=session_id,
+                content=ai_response,
+                message_type="ai",
+                parent_id=user_message.sequence_num,
+                meta_data={"generated": True, "method": "centralized_agent"}
+            )
+            
+        except Exception as e:
+            logger.error(f"Error generating AI response: {str(e)}")
+            # Create fallback response
+            ai_message = chat_message_crud.create(
+                db=db,
+                chat_id=session_id,
+                content=f"I apologize, but I encountered an error while processing your request: {str(e)}",
+                message_type="ai",
+                parent_id=user_message.sequence_num,
+                meta_data={"generated": True, "error": str(e)}
+            )
     
     return ChatMessageResponse(
         user_message=ChatMessageRead.model_validate(user_message),
@@ -554,6 +611,140 @@ async def simulate_llm_response(user_message: str, session_id: uuid.UUID, messag
         await asyncio.sleep(0.2)  # Simulate processing delay
         yield part
 
+async def stream_agent_response(
+    db: Session,
+    session_id: uuid.UUID,
+    user_message: str,
+    user_message_seq: int,
+    session_data: ChatSession
+) -> AsyncGenerator[str, None]:
+    """
+    Stream real LLM response using the conversation agent
+    """
+    logger.info(f"Starting agent response stream for session {session_id}")
+    
+    try:
+        # Import here to avoid circular imports
+        from ai.agents.conversation_agent import graph, AgentState, llm
+        
+        # Load or create agent state from session
+        agent_state = session_data.agent_state or {}
+        
+        # Initialize conversation state if not exists
+        if not agent_state.get("initialized"):
+            main_system_prompt = load_main_system_prompt()
+            conversation_state = AgentState(
+                messages=[SystemMessage(content=main_system_prompt)],
+                project_name=session_data.meta_data.get("project_name", "Default Project"),
+                context=agent_state.get("context", ""),
+                requirements=agent_state.get("requirements", []),
+                testCases=agent_state.get("testCases", [])
+            )
+            agent_state["initialized"] = True
+        else:
+            # Restore conversation state from session
+            conversation_state = AgentState(
+                messages=[
+                    SystemMessage(content=load_main_system_prompt()),
+                    # Add previous messages if needed
+                ],
+                project_name=session_data.meta_data.get("project_name", "Default Project"),
+                context=agent_state.get("context", ""),
+                requirements=agent_state.get("requirements", []),
+                testCases=agent_state.get("testCases", [])
+            )
+        
+        # Add user message to conversation
+        conversation_state["messages"].append(HumanMessage(content=user_message))
+        
+        # Get streaming response from agent
+        try:
+            # Add proper configuration for checkpointer
+            config = {"configurable": {"thread_id": str(session_id)}}
+            stream_response = graph.astream(
+                conversation_state,
+                config=config,  # type: ignore
+                stream_mode="values"
+            )
+        except Exception as agent_error:
+            logger.warning(f"Agent streaming failed: {agent_error}, falling back to simple LLM")
+            # Fallback to simple LLM streaming
+            messages = [
+                SystemMessage(content=load_main_system_prompt()),
+                HumanMessage(content=user_message)
+            ]
+            stream_response = llm.astream(messages)
+            
+            # Handle simple LLM streaming
+            async for chunk in stream_response:
+                if hasattr(chunk, 'content') and chunk.content:
+                    yield str(chunk.content)
+            return
+        
+        accumulated_content = ""
+        async for chunk in stream_response:
+            if "messages" in chunk and chunk["messages"]:
+                last_message = chunk["messages"][-1]
+                if isinstance(last_message, AIMessage):
+                    # Extract content delta
+                    if hasattr(last_message, 'content') and last_message.content:
+                        new_content = str(last_message.content)  # Ensure it's a string
+                        if new_content != accumulated_content:
+                            delta = new_content[len(accumulated_content):]
+                            accumulated_content = new_content
+                            if delta:
+                                yield delta
+        
+        # Update session with final agent state
+        final_agent_state = {
+            "initialized": True,
+            "context": conversation_state.get("context", ""),
+            "requirements": conversation_state.get("requirements", []),
+            "testCases": conversation_state.get("testCases", [])
+        }
+        
+        # Update session in database
+        chat_session_crud.update(
+            db=db,
+            chat_session_id=session_id,
+            agent_state=final_agent_state
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in agent response stream: {str(e)}")
+        yield f"I apologize, but I encountered an error while processing your request: {str(e)}"
+
+async def stream_simple_llm_response(
+    user_message: str,
+    session_id: uuid.UUID,
+    message_sequence_num: int
+) -> AsyncGenerator[str, None]:
+    """
+    Stream response using simple LLM call (fallback option)
+    """
+    logger.info(f"Starting simple LLM response stream for session {session_id}")
+    
+    try:
+        # Import here to avoid circular imports
+        from ai.agents.conversation_agent import llm
+        
+        # Create a simple conversation with the LLM
+        messages = [
+            SystemMessage(content=load_main_system_prompt()),
+            HumanMessage(content=user_message)
+        ]
+        
+        # Stream response from LLM
+        stream_response = llm.astream(messages)
+        
+        async for chunk in stream_response:
+            if hasattr(chunk, 'content') and chunk.content:
+                yield str(chunk.content)
+                
+    except Exception as e:
+        logger.error(f"Error in simple LLM response stream: {str(e)}")
+        yield f"I apologize, but I encountered an error while processing your request: {str(e)}"
+
 async def stream_llm_response(
     db: Session,
     session_id: uuid.UUID,
@@ -563,6 +754,14 @@ async def stream_llm_response(
     """
     Stream LLM response and save to database
     """
+    logger.info(f"Starting LLM response stream for session {session_id}")
+    
+    # Get session data for context
+    session_data = chat_session_crud.get(db=db, chat_session_id=session_id)
+    if not session_data:
+        yield "data: {\"type\": \"error\", \"error\": \"Session not found\"}\n\n"
+        return
+    
     # Create streaming AI message
     ai_message = chat_message_crud.create(
         db=db,
@@ -591,31 +790,46 @@ async def stream_llm_response(
         )
         yield f"data: {start_chunk.json()}\n\n"
         
-        # Stream content chunks
-        async for content_delta in simulate_llm_response(user_message, session_id, user_message_seq):
-            chunk_sequence += 1
-            full_content += content_delta
-            
-            # Create content chunk
-            content_chunk = StreamingChunk(
-                type="content_chunk",
-                sequence_num=ai_message.sequence_num,
-                chunk_sequence=chunk_sequence,
-                delta=content_delta,
-                content=full_content,
-                message_id=f"{session_id}:{ai_message.sequence_num}"
-            )
-            yield f"data: {content_chunk.json()}\n\n"
-            
-            # Update message in database periodically
-            if chunk_sequence % 3 == 0:  # Update every 3 chunks
-                chat_message_crud.update(
-                    db=db,
-                    chat_id=session_id,
+        # Import and use centralized streaming function
+        from ai.agents.conversation_agent import stream_agent_response
+        
+        # Get configuration
+        use_agent = session_data.meta_data.get("use_agent", True) if session_data.meta_data else True
+        project_name = session_data.meta_data.get("project_name", "Default Project") if session_data.meta_data else "Default Project"
+        
+        # Stream content using centralized function
+        async for content_delta in stream_agent_response(
+            session_id=str(session_id),
+            user_message=user_message,
+            user_message_seq=user_message_seq,
+            session_agent_state=session_data.agent_state,
+            project_name=project_name,
+            use_tools=use_agent
+        ):
+            if content_delta:  # Only process non-empty deltas
+                chunk_sequence += 1
+                full_content += content_delta
+                
+                # Create content chunk
+                content_chunk = StreamingChunk(
+                    type="content_chunk",
                     sequence_num=ai_message.sequence_num,
+                    chunk_sequence=chunk_sequence,
+                    delta=content_delta,
                     content=full_content,
-                    chunk_sequence=chunk_sequence
+                    message_id=f"{session_id}:{ai_message.sequence_num}"
                 )
+                yield f"data: {content_chunk.json()}\n\n"
+                
+                # Update message in database periodically
+                if chunk_sequence % 5 == 0:
+                    chat_message_crud.update(
+                        db=db,
+                        chat_id=session_id,
+                        sequence_num=ai_message.sequence_num,
+                        content=full_content,
+                        chunk_sequence=chunk_sequence
+                    )
         
         # Finalize message
         final_message = chat_message_crud.update(
@@ -641,6 +855,7 @@ async def stream_llm_response(
         yield f"data: {end_chunk.json()}\n\n"
         
     except Exception as e:
+        logger.error(f"Error in LLM response stream: {str(e)}")
         # Handle errors
         error_chunk = StreamingChunk(
             type="error",
@@ -658,9 +873,9 @@ async def stream_llm_response(
                 chat_id=session_id,
                 sequence_num=ai_message.sequence_num,
                 status="error",
-                status_details=str(e),
                 is_streaming=False,
-                stream_complete=True
+                stream_complete=True,
+                meta_data={"error": str(e)}
             )
 
 @router.post("/sessions/{session_id}/messages/stream")
