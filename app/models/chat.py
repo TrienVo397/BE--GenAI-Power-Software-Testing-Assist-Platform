@@ -26,7 +26,7 @@ class ChatSession(SQLModel, table=True):
     
     # Foreign keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True, nullable=False)
-    project_id: Optional[uuid.UUID] = Field(default=None, foreign_key="project.id", index=True, nullable=True)
+    project_id: uuid.UUID = Field(foreign_key="project.id", index=True, nullable=False)  # Every chat session must belong to a project
     
     # LangChain/LangGraph State Management
     agent_state: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))  # Stores the LangGraph agent's state
@@ -43,7 +43,7 @@ class ChatSession(SQLModel, table=True):
     # Relationships
     messages: List["ChatMessage"] = Relationship(back_populates="chat", sa_relationship_kwargs={"cascade": "all, delete"})
     user: "User" = Relationship(back_populates="chats")
-    project: Optional["Project"] = Relationship(back_populates="chats")
+    project: "Project" = Relationship(back_populates="chats")  # Required relationship to project
     
     # Add logging for critical operations
     def __init__(self, **data):

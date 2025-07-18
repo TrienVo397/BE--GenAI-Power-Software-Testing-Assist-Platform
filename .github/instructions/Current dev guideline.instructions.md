@@ -8,9 +8,11 @@ Coding standards, domain knowledge, and preferences that AI should follow.
 - I will doing the terminal command manually, so no need to automate this.
 
 ## Project Description
-This project is a tool AI that operates within project contexts, where testers:
+This project is a GenAI-powered software testing assistance platform that operates within project contexts, where testers:
  - Manually upload documents to project knowledge bases
  - Use conversational commands for test planning operations
+ - Interact with AI agents through chat interfaces for testing guidance
+ - Generate and manage test artifacts through conversational AI
 
 ## Project Structure and AI Indexing Guidelines
 
@@ -21,29 +23,67 @@ This app will use Git to track changes in the project data file, so please ensur
 
 - **`app/`** - Main application code
   - **`api/`** - API layer with versioned endpoints
+    - **`deps.py`** - Dependency injection and shared dependencies
     - **`v1/`** - Version 1 API endpoints
+      - **`api.py`** - Main API router configuration
       - **`endpoints/`** - Individual endpoint handlers
+        - `chat.py` - Chat session and messaging endpoints
+        - `document_versions.py` - Document version management
+        - `files.py` - File upload and management operations
+        - `projects.py` - Project CRUD operations
+        - `project_artifacts.py` - Artifact management
+        - `users.py` - User management endpoints
   - **`core/`** - Core application configuration and utilities
     - `config.py` - Application configuration settings
     - `database.py` - Database connection and session management
     - `security.py` - Authentication and security utilities
   - **`crud/`** - CRUD operations for database entities
     - Each file handles database operations for a specific model
+    - `chat_crud.py` - Chat session and message operations
+    - `credential_crud.py` - User credential management
+    - `document_version_crud.py` - Document version operations
+    - `project_artifact_crud.py` - Artifact management operations
+    - `project_crud.py` - Project management operations
+    - `user_crud.py` - User management operations
   - **`models/`** - SQLAlchemy database models
     - Define database schema and relationships
+    - `chat.py` - ChatSession and ChatMessage models
+    - `credential.py` - User credential model
+    - `document_version.py` - Document versioning model
+    - `project_artifact.py` - Project artifact model
+    - `project.py` - Core project model
+    - `user.py` - User model
   - **`schemas/`** - Pydantic schemas for request/response validation
     - Define API input/output data structures
+    - `chat.py` - Chat-related schemas
+    - `document_version.py` - Document version schemas
+    - `file.py` - File operation schemas
+    - `project_artifact.py` - Artifact schemas
+    - `project.py` - Project schemas
+    - `user.py` - User schemas
   - **`utils/`** - Utility functions and helpers
     - `project_fs.py` - File system operations for projects
 
 ### Data Management
 
 - **`data/`** - Project data storage
-  - **`default/templates/`** - Default project templates
+  - **`default/`** - Default project resources
+    - **`prompts/`** - Default system prompts and templates
+    - **`templates/`** - Default project templates
   - **`project-{uuid}/`** - Individual project workspaces
     - **`artifacts/`** - Generated test artifacts
     - **`templates/`** - Project-specific templates
     - **`versions/`** - Document version history
+
+### AI Agent System
+
+- **`ai/`** - AI agent implementation and research
+  - **`agents/`** - Production AI agent modules
+    - `conversation_agent.py` - Main conversational AI agent using LangGraph
+  - **`researchExample/`** - Research and development examples
+    - **`Agents/`** - Experimental agent implementations
+    - **`Outputs/`** - Generated outputs and examples
+    - **`Prompts/`** - System prompts and prompt templates
 
 ### Supporting Files
 
@@ -52,6 +92,7 @@ This app will use Git to track changes in the project data file, so please ensur
 - **`alembic/`** - Database migration files (currently unused)
 - `manage.py` - Database management commands
 - `requirements.txt` - Python dependencies
+- `docs/` - Documentation files where AI can find changes and API documentation
 
 ### AI Crawling and Indexing Best Practices
 
@@ -68,6 +109,8 @@ When analyzing this codebase:
 - **User** → **Project** (one-to-many)
 - **Project** → **ProjectArtifact** (one-to-many)
 - **Project** → **DocumentVersion** (one-to-many)
+- **Project** → **ChatSession** (one-to-many)
+- **ChatSession** → **ChatMessage** (one-to-many)
 - **User** → **Credential** (one-to-one)
 
 ### File Naming Conventions

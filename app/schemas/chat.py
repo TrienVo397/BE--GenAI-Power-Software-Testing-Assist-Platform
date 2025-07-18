@@ -14,7 +14,7 @@ class ChatSessionBase(BaseModel):
 
 class ChatSessionCreate(ChatSessionBase):
     user_id: uuid.UUID
-    project_id: Optional[uuid.UUID] = None
+    project_id: uuid.UUID  # Required - every chat session must belong to a project
     current_message_sequence_num: int = 0
     agent_state: Optional[Dict[str, Any]] = None
     graph_id: Optional[str] = None
@@ -22,7 +22,7 @@ class ChatSessionCreate(ChatSessionBase):
     memory_config: Optional[Dict[str, Any]] = None
 
 class ChatSessionCreateSimple(ChatSessionBase):
-    project_id: Optional[uuid.UUID] = None
+    project_id: uuid.UUID  # Required - every chat session must belong to a project
     current_message_sequence_num: int = 0
     agent_state: Optional[Dict[str, Any]] = None
     graph_id: Optional[str] = None
@@ -44,7 +44,7 @@ class ChatSessionUpdate(BaseModel):
 class ChatSessionRead(ChatSessionBase):
     id: uuid.UUID
     user_id: uuid.UUID
-    project_id: Optional[uuid.UUID] = None
+    project_id: uuid.UUID  # Required - every chat session belongs to a project
     created_at: datetime
     updated_at: datetime
     current_message_sequence_num: int
@@ -128,11 +128,6 @@ class ChatMessageInput(BaseModel):
     parent_id: Optional[int] = None
     meta_data: Optional[Dict[str, Any]] = None
 
-class ChatMessageResponse(BaseModel):
-    """Schema for chat message response"""
-    user_message: ChatMessageRead
-    ai_message: Optional[ChatMessageRead] = None
-
 class ChatListResponse(BaseModel):
     """Schema for chat list response"""
     items: List[ChatSessionRead]
@@ -148,18 +143,6 @@ class ChatMessagesResponse(BaseModel):
     page: int
     size: int
     pages: int
-
-class ChatStatusUpdate(BaseModel):
-    """Schema for updating chat message status"""
-    status: str
-    status_details: Optional[str] = None
-
-class StreamingUpdate(BaseModel):
-    """Schema for streaming message updates"""
-    is_streaming: bool
-    stream_complete: bool = True
-    chunk_sequence: Optional[int] = None
-    content: Optional[str] = None
 
 class StreamingMessageInput(BaseModel):
     """Schema for sending a message that expects a streaming response"""

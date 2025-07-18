@@ -18,7 +18,19 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            mar                        projects.forEach(project => {
+                            const projectDiv = document.createElement('div');
+                            projectDiv.className = 'message';
+                            projectDiv.innerHTML = `
+                                <div class="message-header">${project.name}</div>
+                                <div class="message-content">
+                                    <p><strong>ID:</strong> ${project.id}</p>
+                                    <p><strong>Created:</strong> ${new Date(project.created_at).toLocaleDateString()}</p>
+                                    <p><strong>Note:</strong> ${project.note || 'No description'}</p>
+                                </div>
+                            `;
+                            projectsList.appendChild(projectDiv);
+                        });ottom: 20px;
         }
         
         .login-section {
@@ -187,6 +199,41 @@
             background-color: #e3f2fd;
             color: #1976d2;
         }
+        
+        .project-item {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 3px solid #2196F3;
+        }
+        
+        .project-item:hover {
+            background-color: #e8f5e8;
+        }
+        
+        .project-item.selected {
+            background-color: #e8f5e8;
+            border-left-color: #4CAF50;
+        }
+        
+        select {
+            background-color: white;
+        }
+        
+        select:disabled {
+            background-color: #f5f5f5;
+            color: #999;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .required {
+            color: #d32f2f;
+        }
     </style>
 </head>
 <body>
@@ -212,6 +259,30 @@
     </div>
     
     <div class="two-column">
+        <!-- Project Management Section -->
+        <div class="container login-section">
+            <h2>📁 Project Management</h2>
+            <div class="form-group">
+                <label for="newProjectName">New Project Name:</label>
+                <input type="text" id="newProjectName" value="Test Project">
+            </div>
+            <div class="form-group">
+                <label for="newProjectDescription">Description:</label>
+                <textarea id="newProjectDescription" rows="2" placeholder="Project description...">A test project for chat functionality</textarea>
+            </div>
+            <button onclick="createProject()">Create Project</button>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="projectSelect">Select Project:</label>
+                <select id="projectSelect" onchange="selectProject()">
+                    <option value="">-- Select a project --</option>
+                </select>
+            </div>
+            <button onclick="loadProjects()">Refresh Projects</button>
+            
+            <div id="projectStatus" class="status-info" style="display: none; margin-top: 10px;"></div>
+        </div>
+        
         <!-- Chat Section -->
         <div class="container chat-section">
             <h2>💬 Chat Interface</h2>
@@ -219,7 +290,11 @@
                 <label for="sessionTitle">Session Title:</label>
                 <input type="text" id="sessionTitle" value="Test Chat Session">
             </div>
-            <button onclick="createSession()">Create New Session</button>
+            <div class="form-group">
+                <label>Selected Project:</label>
+                <div id="selectedProject" class="status-info">No project selected</div>
+            </div>
+            <button onclick="createSession()" id="createSessionBtn" disabled>Create New Session</button>
             
             <div class="form-group" style="margin-top: 15px;">
                 <label for="sessionId">Session ID:</label>
@@ -229,7 +304,7 @@
             <div class="messages-container" id="messagesContainer">
                 <div class="message">
                     <div class="message-header">System</div>
-                    <div class="message-content">Create a session and start chatting!</div>
+                    <div class="message-content">Select a project and create a session to start chatting!</div>
                 </div>
             </div>
             
@@ -239,18 +314,23 @@
             </div>
             
             <div class="form-group">
-                <button onclick="sendMessage()" class="stream-button">Send Message (Regular)</button>
-                <button onclick="sendStreamingMessage()" class="stream-button" style="margin-top: 10px;">Send Message (Streaming)</button>
-                <button onclick="stopStreaming()" class="danger-button" style="margin-top: 10px;">Stop Streaming</button>
+                <button onclick="sendMessage()" class="stream-button" id="sendMessageBtn" disabled>Send Message</button>
             </div>
         </div>
-        
+    </div>
+    
+    <div class="two-column">
         <!-- Status Section -->
         <div class="container status-section">
             <h2>📊 Status & Logs</h2>
             <div class="form-group">
                 <label>Connection Status:</label>
                 <div id="connectionStatus" class="status-info">Not connected</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Current Project:</label>
+                <div id="currentProject" class="status-info">No project</div>
             </div>
             
             <div class="form-group">
@@ -265,10 +345,34 @@
             
             <div class="form-group">
                 <label>Activity Log:</label>
-                <div id="activityLog" class="messages-container" style="height: 300px;"></div>
+                <div id="activityLog" class="messages-container" style="height: 250px;"></div>
             </div>
             
             <button onclick="clearLog()" class="danger-button">Clear Log</button>
+        </div>
+        
+        <!-- Project Info Section -->
+        <div class="container">
+            <h2>📋 Project Information</h2>
+            <div class="form-group">
+                <label>Project Details:</label>
+                <div id="projectInfo" class="messages-container" style="height: 200px;">
+                    <div class="message">
+                        <div class="message-header">Info</div>
+                        <div class="message-content">Select a project to view details</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Available Projects:</label>
+                <div id="projectsList" class="messages-container" style="height: 150px;">
+                    <div class="message">
+                        <div class="message-header">Info</div>
+                        <div class="message-content">Login to load projects</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -276,7 +380,7 @@
         // Global variables
         let authToken = null;
         let currentSessionId = null;
-        let eventSource = null;
+        let currentProjectId = null;
         let serverUrl = 'http://localhost:8000';
         
         // Logging utility
@@ -305,6 +409,36 @@
             const statusDiv = document.getElementById('streamingStatus');
             statusDiv.textContent = status;
             statusDiv.className = `status-info ${isError ? 'error' : 'success'}`;
+        }
+        
+        // Update current project status
+        function updateCurrentProject(projectName, projectId) {
+            const statusDiv = document.getElementById('currentProject');
+            statusDiv.textContent = projectName ? `${projectName} (${projectId})` : 'No project';
+            statusDiv.className = `status-info ${projectName ? 'success' : ''}`;
+        }
+        
+        // Update project selection UI
+        function updateProjectSelection(project) {
+            const selectedDiv = document.getElementById('selectedProject');
+            if (project) {
+                selectedDiv.textContent = `${project.name} (${project.id})`;
+                selectedDiv.className = 'status-info success';
+                
+                // Enable session creation
+                document.getElementById('createSessionBtn').disabled = false;
+            } else {
+                selectedDiv.textContent = 'No project selected';
+                selectedDiv.className = 'status-info';
+                
+                // Disable session creation
+                document.getElementById('createSessionBtn').disabled = true;
+            }
+        }
+        
+        // Update session controls
+        function updateSessionControls(hasSession) {
+            document.getElementById('sendMessageBtn').disabled = !hasSession;
         }
         
         // Authentication
@@ -344,6 +478,9 @@
                     
                     updateConnectionStatus('Connected - Authenticated');
                     log('Login successful', 'success');
+                    
+                    // Load projects after successful login
+                    loadProjects();
                 } else {
                     const errorData = await response.json();
                     throw new Error(errorData.detail || 'Login failed');
@@ -359,10 +496,202 @@
             }
         }
         
+        // Project Management Functions
+        
+        // Create new project
+        async function createProject() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const name = document.getElementById('newProjectName').value.trim();
+            const description = document.getElementById('newProjectDescription').value.trim();
+            
+            if (!name) {
+                alert('Please enter a project name');
+                return;
+            }
+            
+            log(`Creating project: ${name}...`);
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/projects`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        description: description || 'Created from test interface'
+                    })
+                });
+                
+                if (response.ok) {
+                    const project = await response.json();
+                    log(`Project created: ${project.name} (${project.id})`, 'success');
+                    
+                    // Update project status
+                    const statusDiv = document.getElementById('projectStatus');
+                    statusDiv.textContent = `Project "${project.name}" created successfully!`;
+                    statusDiv.className = 'status-info success';
+                    statusDiv.style.display = 'block';
+                    
+                    // Clear form
+                    document.getElementById('newProjectName').value = '';
+                    document.getElementById('newProjectDescription').value = '';
+                    
+                    // Reload projects
+                    loadProjects();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to create project');
+                }
+            } catch (error) {
+                log(`Project creation failed: ${error.message}`, 'error');
+                
+                const statusDiv = document.getElementById('projectStatus');
+                statusDiv.textContent = `Project creation failed: ${error.message}`;
+                statusDiv.className = 'status-info error';
+                statusDiv.style.display = 'block';
+            }
+        }
+        
+        // Load projects
+        async function loadProjects() {
+            if (!authToken) {
+                return;
+            }
+            
+            log('Loading projects...');
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/projects`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const projectsData = await response.json();
+                    // Handle both array response and paginated response
+                    const projects = Array.isArray(projectsData) ? projectsData : (projectsData.items || []);
+                    
+                    log(`Found ${projects.length} projects`);
+                    
+                    // Update project select dropdown
+                    const projectSelect = document.getElementById('projectSelect');
+                    projectSelect.innerHTML = '<option value="">-- Select a project --</option>';
+                    
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        option.textContent = `${project.name}${project.note ? ' - ' + project.note : ''}`;
+                        projectSelect.appendChild(option);
+                    });
+                    
+                    // Update projects list display
+                    const projectsList = document.getElementById('projectsList');
+                    projectsList.innerHTML = '';
+                    
+                    if (projects.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = 'message';
+                        emptyDiv.innerHTML = `
+                            <div class="message-header">Info</div>
+                            <div class="message-content">No projects found. Create a project first.</div>
+                        `;
+                        projectsList.appendChild(emptyDiv);
+                    } else {
+                        projects.forEach(project => {
+                            const projectDiv = document.createElement('div');
+                            projectDiv.className = 'message';
+                            projectDiv.innerHTML = `
+                                <div class="message-header">${project.name}</div>
+                                <div class="message-content">
+                                    <p><strong>ID:</strong> ${project.id}</p>
+                                    <p><strong>Created:</strong> ${new Date(project.created_at).toLocaleDateString()}</p>
+                                    <p><strong>Note:</strong> ${project.note || 'No description'}</p>
+                                </div>
+                            `;
+                            projectsList.appendChild(projectDiv);
+                        });
+                    }
+                    
+                    log(`Loaded ${projects.length} projects`, 'success');
+                } else {
+                    throw new Error('Failed to load projects');
+                }
+            } catch (error) {
+                log(`Failed to load projects: ${error.message}`, 'error');
+                
+                const projectsList = document.getElementById('projectsList');
+                projectsList.innerHTML = `
+                    <div class="message error">
+                        <div class="message-header">Error</div>
+                        <div class="message-content">Failed to load projects: ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Select project
+        function selectProject() {
+            const projectSelect = document.getElementById('projectSelect');
+            const selectedProjectId = projectSelect.value;
+            
+            if (selectedProjectId) {
+                const selectedText = projectSelect.options[projectSelect.selectedIndex].text;
+                const projectName = selectedText.split(' - ')[0];
+                
+                currentProjectId = selectedProjectId;
+                
+                // Update UI
+                updateProjectSelection({
+                    id: selectedProjectId,
+                    name: projectName
+                });
+                updateCurrentProject(projectName, selectedProjectId);
+                
+                // Update project info
+                const projectInfo = document.getElementById('projectInfo');
+                projectInfo.innerHTML = `
+                    <div class="message">
+                        <div class="message-header">Selected Project</div>
+                        <div class="message-content">
+                            <strong>Name:</strong> ${projectName}<br>
+                            <strong>ID:</strong> ${selectedProjectId}<br>
+                            <strong>Status:</strong> Ready for chat sessions
+                        </div>
+                    </div>
+                `;
+                
+                log(`Selected project: ${projectName}`, 'success');
+            } else {
+                currentProjectId = null;
+                updateProjectSelection(null);
+                updateCurrentProject(null, null);
+                
+                const projectInfo = document.getElementById('projectInfo');
+                projectInfo.innerHTML = `
+                    <div class="message">
+                        <div class="message-header">Info</div>
+                        <div class="message-content">Select a project to view details</div>
+                    </div>
+                `;
+            }
+        }
+        
         // Create chat session
         async function createSession() {
             if (!authToken) {
                 alert('Please login first');
+                return;
+            }
+            
+            if (!currentProjectId) {
+                alert('Please select a project first');
                 return;
             }
             
@@ -378,8 +707,8 @@
                     },
                     body: JSON.stringify({
                         title: title,
-                        system_prompt: 'You are a helpful assistant.',
-                        project_id: null
+                        system_prompt: 'You are a helpful QA testing assistant.',
+                        project_id: currentProjectId
                     })
                 });
                 
@@ -391,9 +720,15 @@
                     document.getElementById('currentSession').textContent = `${title} (${currentSessionId})`;
                     document.getElementById('currentSession').className = 'status-info success';
                     
+                    // Enable message controls
+                    updateSessionControls(true);
+                    
                     // Clear messages
                     const messagesContainer = document.getElementById('messagesContainer');
                     messagesContainer.innerHTML = '';
+                    
+                    // Add welcome message
+                    addMessage('Session created! You can now start chatting.', 'system');
                     
                     log(`Session created: ${currentSessionId}`, 'success');
                 } else {
@@ -414,7 +749,9 @@
             
             const headerDiv = document.createElement('div');
             headerDiv.className = 'message-header';
-            headerDiv.textContent = type === 'user' ? 'You' : (type === 'ai' ? 'AI Assistant' : 'System');
+            headerDiv.textContent = type === 'user' ? 'You' : 
+                                  type === 'ai' ? 'AI Assistant' : 
+                                  type === 'system' ? 'System' : 'Message';
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
@@ -428,60 +765,8 @@
             return messageDiv;
         }
         
-        // Send regular message
+        // Send message (streaming)
         async function sendMessage() {
-            if (!authToken || !currentSessionId) {
-                alert('Please login and create a session first');
-                return;
-            }
-            
-            const messageText = document.getElementById('messageInput').value.trim();
-            if (!messageText) {
-                alert('Please enter a message');
-                return;
-            }
-            
-            log(`Sending message: ${messageText}`);
-            
-            // Add user message to UI
-            addMessage(messageText, 'user');
-            
-            try {
-                const response = await fetch(`${serverUrl}/api/v1/chat/sessions/${currentSessionId}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({
-                        content: messageText,
-                        message_type: 'human'
-                    })
-                });
-                
-                if (response.ok) {
-                    const responseData = await response.json();
-                    
-                    // Add AI response to UI
-                    if (responseData.ai_message) {
-                        addMessage(responseData.ai_message.content, 'ai');
-                    }
-                    
-                    // Clear input
-                    document.getElementById('messageInput').value = '';
-                    log('Message sent successfully', 'success');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to send message');
-                }
-            } catch (error) {
-                log(`Message sending failed: ${error.message}`, 'error');
-                addMessage(`Error: ${error.message}`, 'error');
-            }
-        }
-        
-        // Send streaming message
-        async function sendStreamingMessage() {
             if (!authToken || !currentSessionId) {
                 alert('Please login and create a session first');
                 return;
@@ -499,10 +784,6 @@
             // Add user message to UI
             addMessage(messageText, 'user');
             
-            // Create streaming AI message placeholder
-            const aiMessageDiv = addMessage('', 'ai', true);
-            const aiContentDiv = aiMessageDiv.querySelector('.message-content');
-            
             try {
                 const response = await fetch(`${serverUrl}/api/v1/chat/sessions/${currentSessionId}/messages/stream`, {
                     method: 'POST',
@@ -516,91 +797,71 @@
                     })
                 });
                 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to start streaming');
-                }
-                
-                updateStreamingStatus('Streaming active...');
-                log('Streaming started', 'success');
-                
-                // Process streaming response
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                while (true) {
-                    const { done, value } = await reader.read();
+                if (response.ok) {
+                    updateStreamingStatus('Streaming active...');
                     
-                    if (done) {
-                        updateStreamingStatus('Stream completed');
-                        log('Streaming completed', 'success');
-                        break;
-                    }
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let aiMessageContent = '';
+                    let aiMessageElement = null;
                     
-                    buffer += decoder.decode(value, { stream: true });
-                    
-                    // Process complete messages
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.substring(6));
-                                handleStreamingData(data, aiContentDiv);
-                            } catch (e) {
-                                log(`Error parsing streaming data: ${e.message}`, 'error');
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            updateStreamingStatus('Stream completed');
+                            log('Streaming completed', 'success');
+                            break;
+                        }
+                        
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.substring(6));
+                                    
+                                    if (data.type === 'message_start') {
+                                        // Create AI message element
+                                        aiMessageElement = addMessage('', 'ai', true);
+                                        log('AI response started', 'info');
+                                    } else if (data.type === 'content_chunk') {
+                                        // Update AI message content
+                                        aiMessageContent = data.content || '';
+                                        if (aiMessageElement) {
+                                            const contentDiv = aiMessageElement.querySelector('.message-content');
+                                            contentDiv.textContent = aiMessageContent + '▊'; // Add cursor
+                                        }
+                                    } else if (data.type === 'message_end') {
+                                        // Finalize AI message
+                                        if (aiMessageElement) {
+                                            const contentDiv = aiMessageElement.querySelector('.message-content');
+                                            contentDiv.textContent = aiMessageContent; // Remove cursor
+                                            aiMessageElement.classList.remove('streaming');
+                                        }
+                                        log('AI response completed', 'success');
+                                    } else if (data.type === 'error') {
+                                        throw new Error(data.error || 'Streaming error');
+                                    }
+                                } catch (parseError) {
+                                    console.warn('Failed to parse streaming data:', parseError);
+                                }
                             }
                         }
                     }
+                    
+                    // Clear input
+                    document.getElementById('messageInput').value = '';
+                    log('Streaming message completed', 'success');
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
-                
-                // Remove streaming class when done
-                aiMessageDiv.classList.remove('streaming');
-                
-                // Clear input
-                document.getElementById('messageInput').value = '';
-                
             } catch (error) {
-                log(`Streaming failed: ${error.message}`, 'error');
+                log(`Streaming message failed: ${error.message}`, 'error');
                 updateStreamingStatus(`Streaming failed: ${error.message}`, true);
-                aiContentDiv.textContent = `Error: ${error.message}`;
-                aiMessageDiv.classList.remove('streaming');
-                aiMessageDiv.classList.add('error');
-            }
-        }
-        
-        // Handle streaming data chunks
-        function handleStreamingData(data, contentDiv) {
-            if (data.type === 'message_start') {
-                log('Message stream started', 'info');
-                contentDiv.textContent = '▊'; // Cursor
-            } else if (data.type === 'content_chunk') {
-                // Update content with new chunk
-                contentDiv.textContent = data.content + '▊';
-                log(`Received chunk: ${data.delta}`, 'info');
-            } else if (data.type === 'message_end') {
-                // Remove cursor and finalize
-                contentDiv.textContent = data.content;
-                log('Message stream completed', 'success');
-            } else if (data.type === 'error') {
-                contentDiv.textContent = `Error: ${data.error}`;
-                log(`Stream error: ${data.error}`, 'error');
-            }
-            
-            // Auto-scroll to bottom
-            const messagesContainer = document.getElementById('messagesContainer');
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        // Stop streaming
-        function stopStreaming() {
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-                updateStreamingStatus('Streaming stopped');
-                log('Streaming stopped by user', 'info');
+                addMessage(`Error: ${error.message}`, 'error');
             }
         }
         
@@ -621,6 +882,9 @@
         log('Chat API Test Interface loaded', 'success');
         updateConnectionStatus('Not connected');
         updateStreamingStatus('Not streaming');
+        updateCurrentProject(null, null);
+        updateProjectSelection(null);
+        updateSessionControls(false);
     </script>
 </body>
 </html>

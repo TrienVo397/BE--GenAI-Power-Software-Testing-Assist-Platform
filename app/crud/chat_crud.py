@@ -165,14 +165,6 @@ class CRUDChatMessage:
         chat_messages = db.exec(statement).all()
         return list(reversed(chat_messages))  # Return in chronological order
 
-    def get_streaming_messages(self, db: Session, chat_id: uuid.UUID) -> List[ChatMessage]:
-        """Get all streaming messages from a chat session."""
-        statement = select(ChatMessage).where(
-            and_(ChatMessage.chat_id == chat_id, ChatMessage.is_streaming == True)
-        ).order_by(asc(ChatMessage.sequence_num))
-        chat_messages = db.exec(statement).all()
-        return list(chat_messages)
-
     def get_by_status(self, db: Session, chat_id: uuid.UUID, status: str) -> List[ChatMessage]:
         """Get chat messages by status."""
         statement = select(ChatMessage).where(
@@ -228,38 +220,6 @@ class CRUDChatMessage:
                 db.commit()
             
             logging.info(f"Chat message deleted: {sequence_num} in chat {chat_id}")
-            return chat_message
-        return None
-
-    def mark_streaming_complete(self, db: Session, chat_id: uuid.UUID, sequence_num: int) -> Optional[ChatMessage]:
-        """Mark a streaming message as complete."""
-        chat_message = self.get(db, chat_id, sequence_num)
-        if chat_message:
-            chat_message.is_streaming = False
-            chat_message.stream_complete = True
-            chat_message.status = "complete"
-            
-            db.add(chat_message)
-            db.commit()
-            db.refresh(chat_message)
-            
-            logging.info(f"Streaming completed for message: {sequence_num} in chat {chat_id}")
-            return chat_message
-        return None
-
-    def update_status(self, db: Session, chat_id: uuid.UUID, sequence_num: int, status: str, status_details: Optional[str] = None) -> Optional[ChatMessage]:
-        """Update the status of a chat message."""
-        chat_message = self.get(db, chat_id, sequence_num)
-        if chat_message:
-            chat_message.status = status
-            if status_details:
-                chat_message.status_details = status_details
-            
-            db.add(chat_message)
-            db.commit()
-            db.refresh(chat_message)
-            
-            logging.info(f"Status updated for message: {sequence_num} in chat {chat_id} to {status}")
             return chat_message
         return None
 
