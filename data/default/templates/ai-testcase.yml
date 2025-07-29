@@ -1,0 +1,25 @@
+test_case:
+  id: TC-001
+  description: "Test the login functionality with valid credentials"
+  pre_conditions:
+    - User is on the login page
+    - User has valid credentials
+  steps:
+    - step: "Enter username"
+      action: "User enters valid username"
+      expected_result: "Username is entered successfully"
+    - step: "Enter password"
+      action: "User enters valid password"
+      expected_result: "Password is entered successfully"
+    - step: "Click login button"
+      action: "User clicks the login button"
+      expected_result: "User is redirected to the dashboard page"
+  post_conditions:
+    - User is logged in and on the dashboard page
+  expected_outcome: "User successfully logs in"
+  priority: 
+    level: "High"  # Options: Critical, High, Medium, Low
+    description: "Major functionality that affects user access to the system."
+  test_type: "Functional"  # Options: Functional, Performance, Security, Compatibility, Usability
+  status: "Pass/Fail"
+  comments: "N/A"
