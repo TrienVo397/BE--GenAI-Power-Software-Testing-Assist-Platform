@@ -17,6 +17,8 @@ class Project(SQLModel, table=True):
     current_version: Optional[uuid.UUID] = Field(default=None, foreign_key="documentversion.id", nullable=True)
     note: Optional[str] = None
     meta_data: Optional[str] = None  # Changed name to avoid SQLAlchemy reserved word 'metadata'
+    start_date: Optional[datetime] = None  # Project start date
+    end_date: Optional[datetime] = None  # Project end date
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     created_by: uuid.UUID = Field(foreign_key="user.id", nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)

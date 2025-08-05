@@ -39,6 +39,8 @@ def create_project(
         name=project_simple.name,
         meta_data=project_simple.meta_data,
         note=project_simple.note,
+        start_date=project_simple.start_date,  # Include start_date
+        end_date=project_simple.end_date,  # Include end_date
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -80,9 +82,20 @@ def create_project(
         updated_by=current_user.id
     )
     
+    requirement_artifact = ProjectArtifactCreate(
+        project_id=new_project.id,
+        based_on_version=doc_version.id,
+        artifact_type="requirement",
+        file_path="artifacts/requirement.md",
+        note="Initial requirement template",
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
     # Create the artifacts
     project_artifact_crud.create(db=db, obj_in=checklist_artifact)
     project_artifact_crud.create(db=db, obj_in=testcases_artifact)
+    project_artifact_crud.create(db=db, obj_in=requirement_artifact)
     
     # Update the project with the new version and get the refreshed project
     new_project = project_crud.update(

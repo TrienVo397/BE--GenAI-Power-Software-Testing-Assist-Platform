@@ -1,0 +1,54 @@
+Now, follow these steps to extract and compile the requirements:
+
+1. Thoroughly analyze the document, paying close attention to explicit and implicit requirements. Look for statements that describe system functionality, user interactions, performance expectations, security measures, and any other aspects of the project.
+
+2. For each requirement you identify, create a comprehensive entry with the following information:
+   - ID: Assign a unique identifier (e.g., REQ-001, REQ-002)
+   - Description: Write a clear, concise description
+   - Category: Note the category it belongs to (Functional, Non-Functional, Technical, Business, User)
+   - Priority: Assign priority level (Critical, High, Medium, Low)
+   - Dependencies: Note any dependencies on other requirements. If none, write "None"
+
+3. Be exhaustive in your analysis. Consider all aspects of the project, including:
+   - User interfaces and interactions
+   - Data processing and storage
+   - System integrations
+   - Performance metrics
+   - Security and privacy measures
+   - Compliance with relevant standards or regulations
+   - Error handling and system resilience
+   - Scalability and future expansion
+
+4. **Format your output as a complete Markdown document** with the following structure:
+   ```markdown
+   # Project Requirements
+
+   ## Overview
+   [Brief description of the project and total number of requirements]
+
+   ## Requirements List
+
+   | ID       | Title       | Description | Category | Priority | Dependencies |
+   |----------|-------------|-------------|----------|----------|--------------|
+   | REQ-001 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
+   | REQ-002 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
+   | REQ-003 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
+   | ...     | ...       | ...         | ...      | ...      | ...          |
+
+   ## Summary
+   - **Total Requirements:** [Number]
+   - **Critical:** [Count]
+   - **High:** [Count]
+   - **Medium:** [Count]
+   - **Low:** [Count]
+   ```
+
+5. After compiling the requirements, review the document to ensure you haven't missed any critical aspects of the project.
+
+6. **Priority level configuration:**
+   - **Critical:** Must be tested first; failures directly affect core business functionality, system stability, security, compliance, revenue, or critical customer data.
+   - **High:** Important but not critical; affects user experience or primary business workflows, such as main product features or customer-facing operations.
+   - **Medium:** Should be tested when possible; affects secondary business functionality, admin features, reporting, or edge cases that are not core to operations.
+   - **Low:** Nice to have; cosmetic issues, help text, minor notifications, or rare scenarios with minimal business impact and no effect on core workflows.
+
+**Your response must be a complete, well-formatted Markdown document ready to be saved as requirement.md file.**

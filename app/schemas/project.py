@@ -9,6 +9,8 @@ class ProjectBase(BaseModel):
     meta_data: Optional[str] = None  # Changed from project_metadata to match model/ER diagram 
     note: Optional[str] = None
     repo_path: Optional[str] = None
+    start_date: Optional[datetime] = None  # Project start date
+    end_date: Optional[datetime] = None  # Project end date
 
 # Schema for creating a new project
 class ProjectCreate(ProjectBase):
@@ -20,6 +22,8 @@ class ProjectCreateSimple(BaseModel):
     name: str
     meta_data: Optional[str] = None
     note: Optional[str] = None
+    start_date: Optional[datetime] = None  # Project start date
+    end_date: Optional[datetime] = None  # Project end date
 
 # Schema for updating an existing project
 class ProjectUpdate(BaseModel):
@@ -27,6 +31,8 @@ class ProjectUpdate(BaseModel):
     current_version: Optional[uuid.UUID] = None
     meta_data: Optional[str] = None  # Changed from project_metadata to match model/ER diagram
     note: Optional[str] = None
+    start_date: Optional[datetime] = None  # Project start date
+    end_date: Optional[datetime] = None  # Project end date
 
 # Schema for reading project data
 class ProjectRead(ProjectBase):

@@ -17,6 +17,8 @@ class CRUDProject:
             repo_path=project.repo_path,
             meta_data=project.meta_data,
             note=project.note,
+            start_date=project.start_date,  # Add start_date field
+            end_date=project.end_date,  # Add end_date field
             created_by=project.created_by,
             updated_by=project.updated_by
         )
@@ -113,6 +115,8 @@ class CRUDProject:
                 current_version=None,
                 note=db_project.note,
                 meta_data=db_project.meta_data,
+                start_date=db_project.start_date,  # Include start_date in copy
+                end_date=db_project.end_date,  # Include end_date in copy
                 created_at=db_project.created_at,
                 created_by=db_project.created_by,
                 updated_at=db_project.updated_at,

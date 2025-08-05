@@ -3,7 +3,7 @@ import os
 
 from typing import TypedDict, Annotated, Optional
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_google_genai import ChatGoogleGenerativeAI
+# from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langgraph.prebuilt import ToolNode, InjectedState, tools_condition
 from langgraph.graph import START, END, StateGraph

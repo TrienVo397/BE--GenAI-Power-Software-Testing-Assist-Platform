@@ -23,10 +23,21 @@ def create_project_directory_structure(project_id):
     ├── .git/                # Git repository
     ├── templates/           # Version-controlled templates
     │   ├── checklist.yml    # YAML template
-    │   └── testcase.yml
+    │   ├── testcase.yml
+    │   ├── requirement.yml
+    │   └── coverage.yml
+    ├── prompts/             # AI prompt templates (copied from default/prompts)
+    │   └── (all files from default/prompts)
     ├── artifacts/           # Current outputs
     │   ├── checklist.md
-    │   └── testcase.md
+    │   ├── testcase.md
+    │   ├── requirement.md
+    │   └── coverage.md
+    ├── context/             # Context files for each artifact
+    │   ├── checklist_context.md
+    │   ├── testcase_context.md
+    │   ├── requirement_context.md
+    │   └── coverage_context.md
     └── versions/            # Versioned documents
         ├── v0/
         │   └── srs.pdf
@@ -54,7 +65,9 @@ def create_project_directory_structure(project_id):
     # Create the main directory structure
     os.makedirs(project_dir, exist_ok=True)
     os.makedirs(project_dir / "templates", exist_ok=True)
+    os.makedirs(project_dir / "prompts", exist_ok=True)
     os.makedirs(project_dir / "artifacts", exist_ok=True)
+    os.makedirs(project_dir / "context", exist_ok=True)
     os.makedirs(project_dir / "versions" / "v0", exist_ok=True)
     
     # Copy default template files to project templates
@@ -82,12 +95,74 @@ def create_project_directory_structure(project_id):
         with open(project_dir / "templates" / "testcase.yml", "w") as f:
             f.write("# Test case template\n")
     
+    # Copy requirement template
+    if (default_templates_dir / "requirement.yml").exists():
+        shutil.copy2(
+            default_templates_dir / "requirement.yml", 
+            project_dir / "templates" / "requirement.yml"
+        )
+    else:
+        # Create empty template if default doesn't exist
+        with open(project_dir / "templates" / "requirement.yml", "w") as f:
+            f.write("# Requirement template\n")
+    
+    # Copy coverage template
+    if (default_templates_dir / "coverage.yml").exists():
+        shutil.copy2(
+            default_templates_dir / "coverage.yml", 
+            project_dir / "templates" / "coverage.yml"
+        )
+    else:
+        # Create empty template if default doesn't exist
+        with open(project_dir / "templates" / "coverage.yml", "w") as f:
+            f.write("# Coverage template\n")
+    
+    # Copy default prompt files to project prompts
+    default_prompts_dir = base_dir / "default" / "prompts"
+    
+    if default_prompts_dir.exists():
+        # Copy entire prompts directory recursively
+        for item in default_prompts_dir.rglob("*"):
+            if item.is_file():
+                # Get relative path from default prompts directory
+                relative_path = item.relative_to(default_prompts_dir)
+                target_path = project_dir / "prompts" / relative_path
+                
+                # Create parent directories if they don't exist
+                os.makedirs(target_path.parent, exist_ok=True)
+                
+                # Copy the file
+                shutil.copy2(item, target_path)
+    else:
+        # Create empty prompts directory if default doesn't exist
+        with open(project_dir / "prompts" / "README.md", "w") as f:
+            f.write("# Project Prompts\n\nThis directory contains prompt templates for AI agent interactions.\n")
+    
     # Create empty artifact files
     with open(project_dir / "artifacts" / "checklist.md", "w") as f:
         f.write("# Generated Checklist\n")
     
     with open(project_dir / "artifacts" / "testcase.md", "w") as f:
         f.write("# Generated Test Cases\n")
+    
+    with open(project_dir / "artifacts" / "requirement.md", "w") as f:
+        f.write("# Generated Requirements\n")
+    
+    with open(project_dir / "artifacts" / "coverage.md", "w") as f:
+        f.write("# Generated Coverage Analysis\n")
+    
+    # Create empty context files to store the context of each artifact
+    with open(project_dir / "context" / "checklist_context.md", "w") as f:
+        f.write("# Checklist Context\n\nThis file contains the context and background information used to generate the checklist artifact.\n")
+    
+    with open(project_dir / "context" / "testcase_context.md", "w") as f:
+        f.write("# Test Case Context\n\nThis file contains the context and background information used to generate the test case artifact.\n")
+    
+    with open(project_dir / "context" / "requirement_context.md", "w") as f:
+        f.write("# Requirement Context\n\nThis file contains the context and background information used to generate the requirement artifact.\n")
+    
+    with open(project_dir / "context" / "coverage_context.md", "w") as f:
+        f.write("# Coverage Context\n\nThis file contains the context and background information used to generate the coverage analysis artifact.\n")
     
     # Initialize git repository
     try:

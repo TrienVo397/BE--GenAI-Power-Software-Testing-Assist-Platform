@@ -1,16 +1,330 @@
-# Test case template
+# File: data/default/templates/testcase.yml
+# LLM Prompt Template for ISTQB-compliant Test Case Generation
+#
+# INSTRUCTIONS FOR LLM:
+# You are an expert test case designer following ISTQB standards.
+# Generate detailed, executable test cases based on the test checklist scenarios.
+# Each test case should be specific, measurable, and traceable to requirements.
+# Follow ISTQB test case design principles for clarity and completeness.
+#
+# GENERATION GUIDELINES:
+# 1. Convert each checklist scenario into one or more detailed test cases
+# 2. Apply ISTQB test design techniques (equivalence partitioning, boundary analysis, etc.)
+# 3. Include positive, negative, and edge case variations
+# 4. Ensure test cases are independent and executable
+# 5. Provide clear, step-by-step instructions
+# 6. Define specific, measurable expected results
+# 7. Include appropriate test data and environment setup
+
+# Test Suite Information - ISTQB test organization
+test_suite_info:
+  suite_name: "[Test suite name based on functional area]"
+  suite_description: "[Purpose and scope of this test suite]"
+  test_level: "[Unit/Integration/System/Acceptance]"
+  test_type: "[Functional/Performance/Security/etc.]"
+  test_approach: "[Manual/Automated/Mixed]"
+  environment_requirements: "[Test environment specifications]"
+  test_data_requirements: "[Required test data description]"
+
+# ISTQB Test Case Structure
 testcases:
-  - id: "TC-001"               # Unique identifier (based on checklist)
-    objective: "Verify user login with valid credentials"  # Clear purpose
-    preconditions:                      # Prerequisites
-      - "User is registered"
-      - "Login page is accessible"
-    test_steps:                        # Sequential steps
-      - "1. Navigate to login page"
-      - "2. Enter valid username/password"
-      - "3. Click 'Login'"
-    expected_results:                   # Expected outcomes
-      - "Home page is displayed"
-      - "Welcome message appears"
-    priority: "High"                    # Criticality (based on checklist)
-    type: "Functional"             # Test type (based on checklist)
+  # Functional Test Cases - Business logic verification
+  functional_tests:
+    - id: "TC-F-001"                    # Unique identifier linking to checklist CHK-F-XXX
+      checklist_reference: "[CHK-F-XXX]" # Traceability to checklist item
+      requirement_id: "[FR-XXX]"        # Traceability to original requirement
+      test_objective: "[Clear statement of what this test verifies]"
+      test_description: "[Detailed description of test purpose and scope]"
+      
+      # Test Conditions and Setup
+      preconditions:                    # Prerequisites before test execution
+        - "[System state requirement]"
+        - "[User permissions/setup needed]"
+        - "[Data setup requirements]"
+        - "[Environment configuration]"
+        
+      test_data:                        # Specific test data needed
+        inputs:
+          - field: "[Input field name]"
+            value: "[Test value]"
+            type: "[Valid/Invalid/Boundary]"
+            description: "[Why this value is chosen]"
+        expected_data:
+          - "[Expected data state after test]"
+          
+      # Detailed Test Execution Steps
+      test_steps:                       # Sequential, numbered steps
+        - step_number: 1
+          action: "[Specific action to perform]"
+          input_data: "[Data to enter/select]"
+          expected_result: "[Immediate expected outcome of this step]"
+          
+        - step_number: 2
+          action: "[Next action in sequence]"
+          input_data: "[Data for this step]"
+          expected_result: "[Expected result for this step]"
+          
+        - step_number: 3
+          action: "[Final action]"
+          input_data: "[Final input data]"
+          expected_result: "[Final step expected result]"
+          
+      # Overall Test Results
+      expected_results:                 # Final expected outcomes
+        - "[Primary expected outcome]"
+        - "[Secondary expected outcome]"
+        - "[System state after completion]"
+        - "[Data validation results]"
+        
+      # Test Classification
+      priority: "[Critical/High/Medium/Low]"    # Based on requirement priority
+      test_type: "Functional"                   # ISTQB test type classification
+      complexity: "[Simple/Medium/Complex]"     # Test execution complexity
+      automation_feasibility: "[High/Medium/Low/None]" # Automation potential
+      
+      # Test Execution Information
+      estimated_execution_time: "[Duration in minutes]"
+      test_environment: "[Specific environment needs]"
+      special_setup: "[Any special configuration needed]"
+      cleanup_required: "[Post-test cleanup steps]"
+
+    # Negative Test Case Example
+    - id: "TC-F-002"
+      checklist_reference: "[CHK-F-XXX]"
+      requirement_id: "[FR-XXX]"
+      test_objective: "[Verify system handles invalid input correctly]"
+      test_description: "[Test error handling and validation]"
+      
+      preconditions:
+        - "[Required system state]"
+        - "[Error handling enabled]"
+        
+      test_data:
+        inputs:
+          - field: "[Input field]"
+            value: "[Invalid test value]"
+            type: "Invalid"
+            description: "[Why this represents invalid input]"
+            
+      test_steps:
+        - step_number: 1
+          action: "[Action with invalid data]"
+          input_data: "[Invalid input]"
+          expected_result: "[Validation error triggered]"
+          
+        - step_number: 2
+          action: "[Verify error handling]"
+          input_data: "[N/A]"
+          expected_result: "[Appropriate error message displayed]"
+          
+      expected_results:
+        - "[System rejects invalid input]"
+        - "[User-friendly error message shown]"
+        - "[System remains stable]"
+        - "[No data corruption occurs]"
+        
+      priority: "[Priority level]"
+      test_type: "Functional"
+      complexity: "[Complexity level]"
+      automation_feasibility: "[Feasibility assessment]"
+
+  # Integration Test Cases - System/component integration
+  integration_tests:
+    - id: "TC-I-001"
+      checklist_reference: "[CHK-I-XXX]"
+      requirement_id: "[IR-XXX or FR-XXX]"
+      test_objective: "[Verify integration between components/systems]"
+      test_description: "[Integration point testing details]"
+      
+      preconditions:
+        - "[All integrated systems available]"
+        - "[Network connectivity established]"
+        - "[Authentication configured]"
+        
+      integration_points:              # Specific integration details
+        - source_system: "[System A]"
+          target_system: "[System B]"
+          interface_type: "[API/Database/File/Message Queue]"
+          data_format: "[JSON/XML/CSV/Binary]"
+          
+      test_data:
+        integration_data:
+          - "[Test data for integration flow]"
+          - "[Expected data transformation]"
+          
+      test_steps:
+        - step_number: 1
+          action: "[Trigger integration process]"
+          input_data: "[Integration input data]"
+          expected_result: "[Data sent successfully]"
+          
+        - step_number: 2
+          action: "[Verify data received at target]"
+          input_data: "[N/A]"
+          expected_result: "[Data received and processed correctly]"
+          
+        - step_number: 3
+          action: "[Validate data integrity]"
+          input_data: "[N/A]"
+          expected_result: "[Data matches expected format and values]"
+          
+      expected_results:
+        - "[Successful data exchange]"
+        - "[Data integrity maintained]"
+        - "[Performance within acceptable limits]"
+        - "[Error handling works for integration failures]"
+        
+      priority: "[Priority level]"
+      test_type: "Integration"
+      complexity: "[Complexity level]"
+
+  # Performance Test Cases - Non-functional performance requirements
+  performance_tests:
+    - id: "TC-P-001"
+      checklist_reference: "[CHK-P-XXX]"
+      requirement_id: "[NFR-XXX]"
+      test_objective: "[Verify specific performance requirement]"
+      test_description: "[Performance characteristic being tested]"
+      
+      performance_criteria:            # Specific performance targets
+        response_time_target: "[Maximum acceptable response time]"
+        throughput_target: "[Transactions per second/minute]"
+        concurrent_users: "[Number of simultaneous users]"
+        resource_utilization_limits: "[CPU/Memory/Disk usage limits]"
+        
+      test_environment_specs:          # Performance test environment
+        hardware_specs: "[Server specifications]"
+        network_conditions: "[Network speed/latency]"
+        data_volume: "[Amount of test data]"
+        
+      load_profile:                    # Performance test execution pattern
+        ramp_up_time: "[Time to reach full load]"
+        steady_state_duration: "[Duration at full load]"
+        ramp_down_time: "[Time to reduce load]"
+        
+      test_steps:
+        - step_number: 1
+          action: "[Initialize performance test environment]"
+          input_data: "[Load configuration]"
+          expected_result: "[Test environment ready]"
+          
+        - step_number: 2
+          action: "[Execute load test]"
+          input_data: "[Load pattern data]"
+          expected_result: "[Load applied successfully]"
+          
+        - step_number: 3
+          action: "[Monitor performance metrics]"
+          input_data: "[N/A]"
+          expected_result: "[Metrics collected successfully]"
+          
+        - step_number: 4
+          action: "[Analyze results against criteria]"
+          input_data: "[Performance data]"
+          expected_result: "[Results meet performance targets]"
+          
+      expected_results:
+        - "[Response time within target limits]"
+        - "[Throughput meets requirements]"
+        - "[System stable under load]"
+        - "[Resource utilization within limits]"
+        - "[No performance degradation over time]"
+        
+      priority: "[Priority level]"
+      test_type: "Performance"
+      complexity: "Complex"
+      tools_required: "[Performance testing tools needed]"
+
+  # Security Test Cases - Security and access control verification
+  security_tests:
+    - id: "TC-S-001"
+      checklist_reference: "[CHK-S-XXX]"
+      requirement_id: "[SEC-XXX]"
+      test_objective: "[Verify specific security control]"
+      test_description: "[Security aspect being tested]"
+      
+      security_context:               # Security test context
+        threat_model: "[What threat this test addresses]"
+        security_control: "[Authentication/Authorization/Encryption/etc.]"
+        compliance_requirement: "[Regulatory/industry standard reference]"
+        
+      test_data:
+        security_test_data:
+          - credential_type: "[Valid/Invalid/Expired/etc.]"
+            test_value: "[Specific test credential/data]"
+            expected_behavior: "[How system should respond]"
+            
+      test_steps:
+        - step_number: 1
+          action: "[Attempt security-relevant action]"
+          input_data: "[Security test data]"
+          expected_result: "[Security control activated]"
+          
+        - step_number: 2
+          action: "[Verify security response]"
+          input_data: "[N/A]"
+          expected_result: "[Appropriate security behavior]"
+          
+        - step_number: 3
+          action: "[Check for security vulnerabilities]"
+          input_data: "[Attack vector data]"
+          expected_result: "[System protected against attack]"
+          
+      expected_results:
+        - "[Security control functions correctly]"
+        - "[Unauthorized access prevented]"
+        - "[Security logs generated appropriately]"
+        - "[No sensitive data exposed]"
+        
+      priority: "[Priority level]"
+      test_type: "Security"
+      complexity: "[Complexity level]"
+      security_tools_required: "[Security testing tools needed]"
+
+# Test Execution Planning
+execution_plan:
+  test_cycle_organization:
+    smoke_tests: "[TC IDs for smoke testing]"
+    regression_tests: "[TC IDs for regression testing]"
+    progression_tests: "[TC IDs for new feature testing]"
+    
+  execution_dependencies:
+    prerequisite_tests: "[TC IDs that must pass first]"
+    blocking_dependencies: "[External dependencies]"
+    parallel_execution_groups: "[TC IDs that can run in parallel]"
+    
+  test_data_management:
+    data_setup_scripts: "[Scripts for test data preparation]"
+    data_cleanup_procedures: "[Post-test data cleanup]"
+    data_refresh_requirements: "[When test data needs refresh]"
+
+# Quality Metrics and Reporting
+quality_metrics:
+  test_coverage_metrics:
+    requirement_coverage: "[Percentage of requirements covered]"
+    code_coverage_target: "[Code coverage percentage target]"
+    test_case_coverage: "[Checklist scenarios covered by test cases]"
+    
+  execution_metrics:
+    pass_rate_target: "[Target test pass percentage]"
+    defect_detection_rate: "[Expected defects found per test case]"
+    execution_time_estimates: "[Total execution time estimate]"
+    
+  exit_criteria:
+    - "[All critical test cases passed]"
+    - "[Defect levels within acceptable limits]"
+    - "[Performance targets achieved]"
+    - "[Security tests passed]"
+    - "[Test coverage targets met]"
+
+# Traceability Matrix
+traceability_matrix:
+  requirement_to_testcase:
+    - requirement_id: "[FR-XXX]"
+      test_cases: "[List of TC IDs covering this requirement]"
+      coverage_status: "[Complete/Partial/Missing]"
+      
+  checklist_to_testcase:
+    - checklist_id: "[CHK-XXX]"
+      test_cases: "[List of TC IDs implementing this checklist item]"
+      implementation_status: "[Complete/In Progress/Pending]"

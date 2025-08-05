@@ -15,7 +15,7 @@ class ProjectArtifact(SQLModel, table=True):
     based_on_version: uuid.UUID = Field(foreign_key="documentversion.id", nullable=False)
     artifact_type: str = Field(nullable=False)
     file_path: str = Field(nullable=False)
-    deprecated: bool = Field(default=False, nullable=False)
+    deprecated: bool = Field(default=False, nullable=False) # To know if the c
     deprecated_reason: Optional[str] = None
     note: Optional[str] = None
     meta_data: Optional[str] = None  # Changed to avoid SQLAlchemy reserved word 'metadata'

@@ -20,6 +20,8 @@ langchain
 langchain-core
 langchain-community
 langchain-deepseek
+langchain_anthropic
 langgraph
 sqlite-utils
 websockets
+PyPDF2

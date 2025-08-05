@@ -16,6 +16,7 @@ from app.schemas.chat import (
     StreamingMessageInput, StreamingChunk, StreamingStatus
 )
 from app.crud.chat_crud import chat_session_crud, chat_message_crud
+from app.crud import document_version_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
 from app.models.user import User
@@ -368,11 +369,17 @@ async def stream_llm_response(
         from ai.agents.conversation_agent import stream_agent_response
         
         # Get previous messages from database and convert to LangChain format
-        previous_messages = session_data.get_messages_for_langchain(limit=20)  # Get last 20 messages
+        # Use context_window from session to limit the number of history messages
+        context_limit = session_data.context_window if session_data.context_window else 20  # Default to 20 if not set
+        logger.info(f"Using context window limit of {context_limit} messages for session {session_id}")
+        previous_messages = session_data.get_messages_for_langchain(limit=context_limit)
         
         # Get configuration
         use_agent = session_data.meta_data.get("use_agent", True) if session_data.meta_data else True
         project_id = session_data.project_id  # Required field - every chat session has a project
+        current_ver = document_version_crud.get_current_version(
+            db=db, project_id=project_id
+        )
         project_context = session_data.meta_data.get("project_context", "") if session_data.meta_data else ""
         
         # Stream content using centralized function
@@ -381,6 +388,7 @@ async def stream_llm_response(
             user_message=user_message,
             previous_messages=previous_messages,
             project_id=project_id,
+            current_version=current_ver.version_label if current_ver else "v0",
             project_context=project_context,
             additional_data=session_data.agent_state,
             use_tools=use_agent
@@ -399,7 +407,7 @@ async def stream_llm_response(
                     message_id=f"{session_id}:{ai_message.sequence_num}"
                 )
                 chunk_data = f"data: {content_chunk.json()}\n\n"
-                logger.info(f"Sending chunk {chunk_sequence}: {content_delta}")
+                # logger.info(f"Sending chunk {chunk_sequence}: {content_delta}")
                 yield chunk_data
                 
                 # Add a small delay to ensure chunks are sent individually

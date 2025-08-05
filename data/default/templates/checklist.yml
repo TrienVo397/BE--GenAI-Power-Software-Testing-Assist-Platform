@@ -1,25 +1,249 @@
-# PRIORITY RULES (Allowed values):
-# - "Critical" (Blocks release if failed)
-# - "High" (Core functionality)
-# - "Medium" (Important but workarounds exist)
-# - "Low" (Cosmetic/nice-to-have)
+# File: data/default/templates/checklist.yml
+# LLM Prompt Template for ISTQB-compliant Test Checklist Generation
+# 
+# INSTRUCTIONS FOR LLM:
+# You are an expert test analyst following ISTQB standards.
+# Generate a comprehensive test checklist based on the extracted requirements.
+# Each checklist item represents a high-level test scenario that needs verification.
+# Use this checklist as input for detailed test case generation.
+#
+# GENERATION GUIDELINES:
+# 1. Review all functional and non-functional requirements
+# 2. Create test scenarios covering requirement verification
+# 3. Apply risk-based testing principles for prioritization
+# 4. Follow ISTQB test design techniques (equivalence partitioning, boundary value analysis, etc.)
+# 5. Ensure traceability back to specific requirements
+# 6. Consider positive, negative, and edge case scenarios
 
-# CATEGORY RULES (Allowed values):
-# - "Functional" (Business logic, e.g., login, payments)
-# - "Performance" (Speed, load, scalability)
-# - "Security" (Auth, encryption, vulnerabilities)
-# - "Compatibility" (Cross-browser/device tests)
-# - "Usability" (UX/accessibility)
+# ISTQB Test Design Approach
+test_design_strategy:
+  approach: "[Black-box/White-box/Gray-box testing approach]"
+  techniques_used:
+    - "[Equivalence Partitioning]"
+    - "[Boundary Value Analysis]" 
+    - "[Decision Table Testing]"
+    - "[State Transition Testing]"
+    - "[Use Case Testing]"
+  coverage_criteria: "[Statement/Branch/Path coverage targets]"
+  risk_assessment: "[High/Medium/Low risk areas identified]"
+
+# PRIORITY CLASSIFICATION (ISTQB-aligned):
+# - "Critical" (Blocks release, core business functions)
+# - "High" (Important functionality, user-facing features)
+# - "Medium" (Supporting features, workarounds available)
+# - "Low" (Cosmetic, nice-to-have features)
+
+# TEST TYPE CLASSIFICATION (ISTQB standard categories):
+# - "Functional" (Business logic verification)
+# - "Performance" (Non-functional: speed, load, scalability)
+# - "Security" (Authentication, authorization, data protection)
+# - "Usability" (User experience, accessibility)
+# - "Compatibility" (Cross-platform, browser, integration)
+# - "Reliability" (Availability, fault tolerance, recovery)
+# - "Integration" (Component/system integration)
+# - "Regression" (Existing functionality verification)
 
 checklist:
-  - id: "TC-001" # Unique test case identifier (alphanumeric)
-    requirement: "User Login" # Linked requirement/feature name
-    scenario: "Valid credentials login" # Brief test objective
-    priority: "High" # MUST follow PRIORITY RULES above
-    type: "Functional"  # MUST follow CATEGORY RULES above
-  
-  - id: "TC-002"
-    requirement: "API Performance"
-    scenario: "Response time <500ms (100 users)"
-    priority: "Medium"
-    type: "Performance"
+  # Functional Test Scenarios - Core business logic verification
+  functional_scenarios:
+    - id: "CHK-F-001"
+      requirement_id: "[Reference to requirement FR-XXX]"
+      test_scenario: "[High-level test objective description]"
+      priority: "[Critical/High/Medium/Low]"
+      test_type: "Functional"
+      coverage_area: "[Specific functional area being tested]"
+      test_conditions: "[Key conditions to verify]"
+      entry_criteria: "[Prerequisites for this test]"
+      exit_criteria: "[Completion criteria]"
+      
+    - id: "CHK-F-002"
+      requirement_id: "[FR-XXX]"
+      test_scenario: "[Positive path testing description]"
+      priority: "[Priority level]"
+      test_type: "Functional"
+      coverage_area: "[Business process/feature area]"
+      test_conditions: "[Happy path conditions]"
+      entry_criteria: "[Required system state]"
+      exit_criteria: "[Expected successful outcome]"
+      
+    - id: "CHK-F-003"
+      requirement_id: "[FR-XXX]"
+      test_scenario: "[Negative/error path testing]"
+      priority: "[Priority level]"
+      test_type: "Functional"
+      coverage_area: "[Error handling area]"
+      test_conditions: "[Invalid input conditions]"
+      entry_criteria: "[Setup for error scenarios]"
+      exit_criteria: "[Proper error handling verified]"
+
+  # Integration Test Scenarios - System/component integration
+  integration_scenarios:
+    - id: "CHK-I-001"
+      requirement_id: "[IR-XXX or related functional requirement]"
+      test_scenario: "[Integration point verification]"
+      priority: "[Priority level]"
+      test_type: "Integration"
+      coverage_area: "[System/component integration point]"
+      test_conditions: "[Data flow and interface verification]"
+      entry_criteria: "[Both systems available and configured]"
+      exit_criteria: "[Successful data exchange verified]"
+
+  # Performance Test Scenarios - Non-functional performance requirements
+  performance_scenarios:
+    - id: "CHK-P-001"
+      requirement_id: "[NFR-XXX performance requirement]"
+      test_scenario: "[Performance characteristic verification]"
+      priority: "[Priority level]"
+      test_type: "Performance"
+      coverage_area: "[Performance metric area]"
+      test_conditions: "[Load conditions and measurement criteria]"
+      entry_criteria: "[Performance test environment ready]"
+      exit_criteria: "[Performance targets met]"
+      performance_metrics:
+        - "[Response time targets]"
+        - "[Throughput requirements]"
+        - "[Resource utilization limits]"
+
+  # Security Test Scenarios - Security and access control verification
+  security_scenarios:
+    - id: "CHK-S-001"
+      requirement_id: "[SEC-XXX security requirement]"
+      test_scenario: "[Security control verification]"
+      priority: "[Priority level]"
+      test_type: "Security"
+      coverage_area: "[Security control area]"
+      test_conditions: "[Security policy enforcement]"
+      entry_criteria: "[Security configuration in place]"
+      exit_criteria: "[Security controls working as designed]"
+      security_aspects:
+        - "[Authentication verification]"
+        - "[Authorization control]"
+        - "[Data protection validation]"
+
+  # Usability Test Scenarios - User experience and accessibility
+  usability_scenarios:
+    - id: "CHK-U-001"
+      requirement_id: "[Usability requirement reference]"
+      test_scenario: "[User experience verification]"
+      priority: "[Priority level]"
+      test_type: "Usability"
+      coverage_area: "[User interface/experience area]"
+      test_conditions: "[User interaction scenarios]"
+      entry_criteria: "[UI available for testing]"
+      exit_criteria: "[Usability criteria met]"
+      user_personas: "[Target user types for testing]"
+
+  # Compatibility Test Scenarios - Platform and integration compatibility
+  compatibility_scenarios:
+    - id: "CHK-C-001"
+      requirement_id: "[Compatibility requirement reference]"
+      test_scenario: "[Compatibility verification]"
+      priority: "[Priority level]"
+      test_type: "Compatibility"
+      coverage_area: "[Platform/browser/device compatibility]"
+      test_conditions: "[Compatibility matrix testing]"
+      entry_criteria: "[Multiple platforms available]"
+      exit_criteria: "[Consistent behavior across platforms]"
+      compatibility_matrix:
+        browsers: "[List of browsers to test]"
+        devices: "[List of devices to test]"
+        platforms: "[List of platforms to test]"
+
+  # Reliability Test Scenarios - System reliability and fault tolerance
+  reliability_scenarios:
+    - id: "CHK-R-001"
+      requirement_id: "[Reliability requirement reference]"
+      test_scenario: "[Reliability characteristic verification]"
+      priority: "[Priority level]"
+      test_type: "Reliability"
+      coverage_area: "[Reliability aspect area]"
+      test_conditions: "[Failure and recovery scenarios]"
+      entry_criteria: "[System in stable state]"
+      exit_criteria: "[Reliability targets achieved]"
+
+# Test Coverage Analysis - ISTQB coverage assessment
+coverage_analysis:
+  requirements_coverage:
+    functional_requirements_covered: "[Number/percentage of FR covered]"
+    non_functional_requirements_covered: "[Number/percentage of NFR covered]"
+    business_rules_covered: "[Number/percentage of BR covered]"
+    
+  test_design_coverage:
+    positive_scenarios: "[Count of positive test scenarios]"
+    negative_scenarios: "[Count of negative test scenarios]"
+    boundary_scenarios: "[Count of boundary value tests]"
+    error_handling_scenarios: "[Count of error path tests]"
+    
+  risk_coverage:
+    high_risk_areas_covered: "[List of high-risk areas with test coverage]"
+    medium_risk_areas_covered: "[List of medium-risk areas covered]"
+    uncovered_risk_areas: "[List of areas needing additional coverage]"
+
+# Test Execution Planning - Preparation for test case development
+execution_planning:
+  test_phases:
+    - phase: "Unit Testing"
+      scenarios: "[List CHK IDs for unit test level]"
+      
+    - phase: "Integration Testing"  
+      scenarios: "[List CHK IDs for integration test level]"
+      
+    - phase: "System Testing"
+      scenarios: "[List CHK IDs for system test level]"
+      
+    - phase: "User Acceptance Testing"
+      scenarios: "[List CHK IDs for UAT level]"
+      
+  dependencies:
+    prerequisite_scenarios: "[CHK IDs that must pass before others]"
+    parallel_execution_groups: "[CHK IDs that can run in parallel]"
+    sequential_execution_order: "[CHK IDs requiring specific sequence]"
+
+# Quality Gates - ISTQB test completion criteria
+quality_gates:
+  entry_criteria:
+    - "[Requirements signed off and baselined]"
+    - "[Test environment available and configured]"
+    - "[Test data prepared and validated]"
+    
+  exit_criteria:
+    - "[All critical and high priority scenarios passed]"
+    - "[Defect levels within acceptable limits]"
+    - "[Performance targets achieved]"
+    - "[Security vulnerabilities addressed]"
+    
+  suspension_criteria:
+    - "[Critical defects blocking core functionality]"
+    - "[Test environment unavailable]"
+    - "[Significant requirement changes]"
+
+# Traceability Matrix Preparation
+traceability:
+  requirement_to_checklist_mapping:
+    - requirement_id: "[FR-XXX]"
+      checklist_items: "[List of CHK IDs covering this requirement]"
+      coverage_assessment: "[Complete/Partial/Missing]"
+      
+  test_level_mapping:
+    unit_test_scenarios: "[CHK IDs for unit testing]"
+    integration_test_scenarios: "[CHK IDs for integration testing]"
+    system_test_scenarios: "[CHK IDs for system testing]"
+    acceptance_test_scenarios: "[CHK IDs for acceptance testing]"
+
+# Risk Assessment - Test prioritization based on risk
+risk_based_prioritization:
+  critical_path_scenarios: "[CHK IDs for business-critical paths]"
+  high_complexity_scenarios: "[CHK IDs for complex functionality]"
+  integration_risk_scenarios: "[CHK IDs for risky integrations]"
+  performance_risk_scenarios: "[CHK IDs for performance-critical areas]"
+  security_risk_scenarios: "[CHK IDs for security-sensitive areas]"
+
+# Test Estimation - Effort and resource planning
+test_estimation:
+  total_scenarios: "[Total count of checklist items]"
+  estimated_test_cases: "[Estimated detailed test cases to be created]"
+  complexity_breakdown:
+    simple_scenarios: "[Count and CHK IDs]"
+    medium_scenarios: "[Count and CHK IDs]"
+    complex_scenarios: "[Count and CHK IDs]"
+  effort_estimate: "[Total effort estimation for test execution]"
