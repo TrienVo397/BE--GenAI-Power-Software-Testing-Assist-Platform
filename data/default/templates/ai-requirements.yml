@@ -1,0 +1,13 @@
+requirements:
+  id: REQ-001
+  description: "The system should allow users to login using a username and password"
+  acceptance_criteria:
+    - "Users must provide a valid username and password to gain access."
+    - "Password must be masked when entered."
+    - "Invalid login attempts should trigger an error message."
+  priority:
+    level: "High"  # Options: Critical, High, Medium, Low
+    description: "This feature is crucial for basic access to the system."
+  test_type: "Functional"  # Options: Functional, Performance, Security, Compatibility, Usability
+  status: "Active"
+  comments: "Ensure to meet security standards."
