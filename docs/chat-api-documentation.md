@@ -20,18 +20,18 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "id": "uuid",
-  "title": "string",
+  "title": "string",                      // Default: "New Chat"
   "user_id": "uuid",
-  "project_id": "uuid",           // Required - every session must belong to a project
+  "project_id": "uuid",                   // Required - every session must belong to a project
   "system_prompt": "string",
-  "history_strategy": "string",
-  "memory_type": "string",
-  "context_window": "integer",
-  "current_message_sequence_num": "integer",
-  "agent_state": "object",
+  "history_strategy": "string",           // Default: "all"
+  "memory_type": "string",                // Default: "default" 
+  "context_window": "integer",            // Default: 10
+  "current_message_sequence_num": "integer", // Default: 0
+  "agent_state": "object",                // Default: {}
   "graph_id": "string",
-  "meta_data": "object",
-  "memory_config": "object",
+  "meta_data": "object",                  // Default: {}
+  "memory_config": "object",              // Default: {}
   "created_at": "datetime",
   "updated_at": "datetime"
 }
@@ -40,9 +40,8 @@ Authorization: Bearer <jwt_token>
 ### ChatMessage
 ```json
 {
-  "id": "uuid",
-  "chat_id": "uuid",
   "sequence_num": "integer",
+  "chat_id": "uuid",
   "content": "string",
   "message_type": "string",       // "human" | "ai" | "system"
   "parent_id": "integer",
@@ -51,8 +50,16 @@ Authorization: Bearer <jwt_token>
   "status": "string",             // "pending" | "streaming" | "complete" | "error"
   "chunk_sequence": "integer",
   "meta_data": "object",
-  "created_at": "datetime",
-  "updated_at": "datetime"
+  "additional_kwargs": "object",
+  "function_name": "string",
+  "function_args": "object",
+  "function_output": "object",
+  "node_id": "string",
+  "step_id": "string",
+  "status_details": "string",
+  "importance_score": "float",
+  "embedding_id": "string",
+  "created_at": "datetime"
 }
 ```
 
@@ -68,13 +75,13 @@ POST /sessions
 **Request Body:**
 ```json
 {
-  "title": "string",
+  "title": "string",                       // Optional, default="New Chat"
   "project_id": "uuid",                    // Required
   "system_prompt": "string",               // Optional
-  "history_strategy": "string",            // Optional
-  "memory_type": "string",                 // Optional
-  "context_window": "integer",             // Optional
-  "current_message_sequence_num": "integer", // Optional
+  "history_strategy": "string",            // Optional, default="all"
+  "memory_type": "string",                 // Optional, default="default"
+  "context_window": "integer",             // Optional, default=10
+  "current_message_sequence_num": "integer", // Optional, default=0
   "agent_state": "object",                 // Optional
   "graph_id": "string",                    // Optional
   "meta_data": "object",                   // Optional
@@ -89,7 +96,17 @@ POST /sessions
   "title": "string",
   "user_id": "uuid",
   "project_id": "uuid",
-  // ... other ChatSession fields
+  "system_prompt": "string",
+  "history_strategy": "string",
+  "memory_type": "string",
+  "context_window": "integer",
+  "current_message_sequence_num": "integer",
+  "agent_state": "object",
+  "graph_id": "string",
+  "meta_data": "object",
+  "memory_config": "object",
+  "created_at": "datetime",
+  "updated_at": "datetime"
 }
 ```
 
@@ -221,14 +238,26 @@ GET /sessions/{session_id}/messages?limit={int}
 {
   "id": "uuid",
   "title": "string",
-  // ... ChatSession fields
+  "user_id": "uuid",
+  "project_id": "uuid",
+  "system_prompt": "string",
+  "history_strategy": "string",
+  "memory_type": "string",
+  "context_window": "integer",
+  "current_message_sequence_num": "integer",
+  "agent_state": "object",
+  "graph_id": "string",
+  "meta_data": "object",
+  "memory_config": "object",
+  "created_at": "datetime",
+  "updated_at": "datetime",
   "messages": [
     {
-      "id": "uuid",
       "sequence_num": "integer",
       "content": "string",
       "message_type": "string",
-      // ... ChatMessage fields
+      "status": "string",
+      // ... other ChatMessage fields
     }
   ]
 }
@@ -250,17 +279,33 @@ PUT /sessions/{session_id}/messages/{sequence_num}
 **Request Body:**
 ```json
 {
-  "content": "string"                      // Required
+  "content": "string"                      // Required - updated content for the message
 }
 ```
 
 **Response:** `200 OK`
 ```json
 {
-  "id": "uuid",
   "sequence_num": "integer",
+  "chat_id": "uuid", 
   "content": "string",
-  // ... updated ChatMessage fields
+  "message_type": "string",
+  "status": "string",
+  "parent_id": "integer",
+  "is_streaming": "boolean",
+  "stream_complete": "boolean",
+  "chunk_sequence": "integer",
+  "meta_data": "object",
+  "additional_kwargs": "object",
+  "function_name": "string",
+  "function_args": "object",
+  "function_output": "object",
+  "node_id": "string",
+  "step_id": "string",
+  "status_details": "string",
+  "importance_score": "float",
+  "embedding_id": "string",
+  "created_at": "datetime"
 }
 ```
 
@@ -300,10 +345,11 @@ POST /sessions/{session_id}/messages/stream
 **Request Body:**
 ```json
 {
-  "content": "string",                     // Required
-  "message_type": "string",                // Optional, default="human"
-  "parent_id": "integer",                  // Optional
-  "meta_data": "object"                    // Optional
+  "content": "string",                     // Required - message content
+  "message_type": "string",                // Optional, default="human" - "human" | "ai" | "system"
+  "parent_id": "integer",                  // Optional - parent message sequence number for threading
+  "meta_data": "object",                   // Optional - additional metadata
+  "stream": "boolean"                      // Optional, default=true for streaming endpoint
 }
 ```
 
@@ -331,7 +377,7 @@ data: {"type": "error", "sequence_num": 1, "chunk_sequence": 1, "error": "Error 
 - `404 Not Found`: Session not found
 - `403 Forbidden`: User doesn't own this session
 
-**Description:** Sends a message to the chat session and receives a real-time streaming response from the AI agent. The response is delivered as Server-Sent Events (SSE) with different event types for message lifecycle management.
+**Description:** Sends a message to the chat session and receives a real-time streaming response from the AI agent. The response is delivered as Server-Sent Events (SSE) with different event types for message lifecycle management. The AI agent uses the conversation history (limited by `context_window`) and project context to generate contextually relevant responses.
 
 ## Streaming Event Types
 
@@ -421,7 +467,10 @@ const response = await fetch('/api/v1/chat/sessions', {
   body: JSON.stringify({
     title: 'Test Planning Session',
     project_id: 'project-uuid-here',
-    system_prompt: 'You are a helpful QA testing assistant.'
+    system_prompt: 'You are a helpful QA testing assistant.',
+    context_window: 20,  // Use 20 previous messages for context
+    history_strategy: 'all',
+    memory_type: 'default'
   })
 });
 const session = await response.json();
@@ -437,7 +486,8 @@ const response = await fetch(`/api/v1/chat/sessions/${sessionId}/messages/stream
   },
   body: JSON.stringify({
     content: 'Help me create test cases for login functionality',
-    message_type: 'human'
+    message_type: 'human',
+    stream: true  // Explicitly enable streaming
   })
 });
 
@@ -453,21 +503,31 @@ while (true) {
   
   for (const line of lines) {
     if (line.startsWith('data: ')) {
-      const data = JSON.parse(line.slice(6));
-      
-      switch (data.type) {
-        case 'message_start':
-          console.log('AI started responding...');
-          break;
-        case 'content_chunk':
-          console.log('New content:', data.delta);
-          break;
-        case 'message_end':
-          console.log('AI finished responding');
-          break;
-        case 'error':
-          console.error('Error:', data.error);
-          break;
+      try {
+        const data = JSON.parse(line.slice(6));
+        
+        switch (data.type) {
+          case 'message_start':
+            console.log('AI started responding...');
+            console.log('Message ID:', data.message_id);
+            break;
+          case 'content_chunk':
+            console.log('New content delta:', data.delta);
+            console.log('Full content so far:', data.content);
+            console.log('Chunk sequence:', data.chunk_sequence);
+            break;
+          case 'message_end':
+            console.log('AI finished responding');
+            console.log('Final content:', data.content);
+            console.log('Total chunks:', data.metadata?.total_chunks);
+            break;
+          case 'error':
+            console.error('Error:', data.error);
+            console.error('At sequence:', data.sequence_num);
+            break;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse SSE data:', parseError);
       }
     }
   }
@@ -493,11 +553,14 @@ const sessionWithMessages = await response.json();
 - All timestamps are in ISO 8601 format (UTC)
 - UUIDs are in standard UUID v4 format
 - Streaming responses use Server-Sent Events (SSE) protocol
-- Message sequence numbers are auto-incrementing integers within each session
+- Message sequence numbers are auto-incrementing integers within each session (not UUIDs)
 - Project association is required for all chat sessions (enforced at database level)
+- Messages are identified by their sequence number within a session, not by UUID
+- The `context_window` parameter controls how many previous messages are used for AI context (default: 10)
+- Chat sessions support various configuration options through `agent_state`, `meta_data`, and `memory_config` fields
 
 ---
 
 **API Version**: v1  
-**Last Updated**: July 18, 2025  
+**Last Updated**: July 23, 2025  
 **Authentication**: JWT Bearer Token Required
