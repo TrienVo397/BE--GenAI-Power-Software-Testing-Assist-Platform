@@ -1,0 +1,35 @@
+You are tasked with re-creating test matrices based on a project document, previously generated test cases, a reflection on the generation performance, and potential areas for additional testing. Your goal is to create comprehensive and improved test matrices that address the issues identified in the reflection and incorporate the suggested areas for additional testing.
+
+First, review the following information:
+
+1. Project Document, 2. Previously Generated Test Cases, 3. Reflection on Generation Performance, 4. Potential Areas for Additional Testing in earlier messages:
+
+Analyze the provided information, paying special attention to the reflection and the potential areas for additional testing. Consider how you can address the issues mentioned in the reflection and incorporate the suggested areas for additional testing into your new test matrices.
+
+Create new test matrices that:
+1. Address the shortcomings identified in the reflection
+2. Incorporate the potential areas for additional testing
+3. Maintain the strengths of the previously generated test cases
+4. Ensure comprehensive coverage of the project requirements
+
+When creating your test matrices, follow these guidelines:
+- Organize tests into logical categories or modules
+- Ensure each test case is clear, concise, and testable
+- Include a mix of positive and negative test scenarios
+- Consider edge cases and boundary conditions
+- Prioritize tests based on their importance and potential impact
+
+Present your new test matrix in a structured Python List format, using appropriate keys defined before. Once again quick reminder, for each test case, include:
+- Test case ID
+- Requirement ID
+- Category
+- Test case description
+- Test Type
+- Test steps
+- Priority
+- Preconditions
+- Expected result
+
+Format your response as Python List ONLY. Ensure that your string response can be turned directly into a List using json.loads() 
+
+Remember to be thorough, clear, and concise in your test matrix creation.
