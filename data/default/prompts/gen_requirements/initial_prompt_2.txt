@@ -28,11 +28,11 @@ Now, follow these steps to extract and compile the requirements:
 
    ## Requirements List
 
-   | ID       | Title       | Description | Category | Priority | Dependencies |
+   | ID       | Title       | Description | Category | Risk | Dependencies |
    |----------|-------------|-------------|----------|----------|--------------|
-   | REQ-001 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
-   | REQ-002 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
-   | REQ-003 | [Title] | [Detailed description] | [Category] | [Priority] | [Dependencies] |
+   | REQ-001 | [Title] | [Detailed description] | [Category] | [Risk] | [Dependencies] |
+   | REQ-002 | [Title] | [Detailed description] | [Category] | [Risk] | [Dependencies] |
+   | REQ-003 | [Title] | [Detailed description] | [Category] | [Risk] | [Dependencies] |
    | ...     | ...       | ...         | ...      | ...      | ...          |
 
    ## Summary
@@ -45,10 +45,9 @@ Now, follow these steps to extract and compile the requirements:
 
 5. After compiling the requirements, review the document to ensure you haven't missed any critical aspects of the project.
 
-6. **Priority level configuration:**
-   - **Critical:** Must be tested first; failures directly affect core business functionality, system stability, security, compliance, revenue, or critical customer data.
-   - **High:** Important but not critical; affects user experience or primary business workflows, such as main product features or customer-facing operations.
-   - **Medium:** Should be tested when possible; affects secondary business functionality, admin features, reporting, or edge cases that are not core to operations.
-   - **Low:** Nice to have; cosmetic issues, help text, minor notifications, or rare scenarios with minimal business impact and no effect on core workflows.
+6. **Risk Level Criteria:**
+   - **High**: Critical business functions, security-related, complex integrations
+   - **Medium**: Important features, moderate complexity, user-facing functions
+   - **Low**: Nice-to-have features, simple operations, non-critical paths
 
 **Your response must be a complete, well-formatted Markdown document ready to be saved as requirement.md file.**

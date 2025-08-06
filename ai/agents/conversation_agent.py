@@ -272,6 +272,175 @@ def generate_testCases_fromRequirements_tool(
         ]
     })
 
+@tool
+def generate_rtm_fromRequirements_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """
+    Generates a Requirements Traceability Matrix (RTM) from provided requirements in Markdown format.
+    
+    **Purpose**: Creates a comprehensive mapping between requirements and test cases to ensure complete test coverage.
+    Each requirement is assigned a risk level and mapped to specific test case IDs.
+
+    **RTM Structure**: Requirements → Risk Assessment → Test Case IDs
+    - Maps each requirement to 2-5 test case IDs based on complexity and risk
+    - Provides traceability from requirements to test cases
+    - Includes coverage analysis and risk assessment
+
+    **Inputs:**
+    - `state["project_id"]` (UUID): The project identifier to locate the correct project folder
+    - Uses standard file paths: requirement.md and requirement_context.md in project artifacts/context folders
+
+    **Behavior:**
+    - Constructs file paths using: data/project-{project_id}/artifacts/requirement.md and data/project-{project_id}/context/requirement_context.md
+    - Validates that the requirements and context files exist at the constructed paths
+    - Reads the requirements and context from their respective files
+    - Analyzes requirements and maps them to test cases with IDs and descriptions
+    - Uses existing requirement IDs (REQ-001, REQ-002, etc.) from the Requirements List
+    - Maps each requirement to appropriate test case IDs based on risk level
+    - Saves the RTM as a Markdown file to the project's artifacts/ folder
+
+    **Outputs:**
+    - Updates `state["rtm"]` with the generated RTM content
+    - Updates `state["rtm_file_path"]` with the path to the generated rtm.md file
+    - Adds a success tool message in `state["messages"]`
+
+    **User Interaction:**
+    - The tool automatically handles all file management and path construction.
+    - Don't mention the internal file paths. Always refer to the RTM by its filename only.
+    - Emphasize that this creates requirement-to-test-case mapping for full traceability.
+    """
+    import os
+    
+    logger.debug("Starting generate_rtm_fromRequirements_tool")
+    
+    project_id = state.get('project_id')
+    
+    if not project_id:
+        logger.error("Project ID missing from state")
+        return Command(update={
+            "messages": [
+                ToolMessage(
+                    "Error: Project ID is required to locate the requirements and generate RTM",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        })
+    
+    # Construct file paths based on project_id (same as requirements generation tool)
+    base_path = f"data/project-{project_id}"
+    requirements_file_path = f"{base_path}/artifacts/requirement.md"
+    context_file_path = f"{base_path}/context/requirement_context.md"
+    
+    logger.info(f"Looking for requirements at: {requirements_file_path}")
+    logger.info(f"Looking for context at: {context_file_path}")
+    
+    # Verify the requirements and context files exist
+    if not os.path.exists(requirements_file_path):
+        logger.error(f"Requirements file not found: {requirements_file_path}")
+        return Command(update={
+            "messages": [
+                ToolMessage(
+                    f"Error: Requirements file not found. Please generate requirements first using the PDF document.",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        })
+    
+    if not os.path.exists(context_file_path):
+        logger.error(f"Context file not found: {context_file_path}")
+        return Command(update={
+            "messages": [
+                ToolMessage(
+                    f"Error: Context file not found. Please generate requirements first using the PDF document.",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        })
+    
+    try:
+        # Read requirements and context from files
+        with open(requirements_file_path, 'r', encoding='utf-8') as f:
+            requirements_content = f.read()
+        
+        with open(context_file_path, 'r', encoding='utf-8') as f:
+            context_content = f.read()
+        
+        logger.info("Generating Requirements Traceability Matrix from requirements using AI.")
+        
+        # Add the project root to the path to ensure imports work
+        import sys
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if project_root not in sys.path:
+            sys.path.append(project_root)
+            sys.path.append(project_root)
+        
+        try:
+            from ai.mcp.gen_rtm import generate_rtm_from_requirements
+        except ImportError as e:
+            logger.error(f"Failed to import generate_rtm_from_requirements: {e}")
+            return Command(update={
+                "messages": [
+                    ToolMessage(
+                        "Error: RTM generation module not available",
+                        tool_call_id=tool_call_id
+                    )
+                ]
+            })
+        
+        # Define paths
+        rtm_md_path = f"{base_path}/artifacts/requirements_traceability_matrix.md"
+        rtm_prompt_path = "data/default/prompts/gen_rtm/rtm_generation_prompt.txt"
+        
+        # Verify prompt file exists
+        if not os.path.exists(rtm_prompt_path):
+            logger.error(f"RTM prompt file not found: {rtm_prompt_path}")
+            return Command(update={
+                "messages": [
+                    ToolMessage(
+                        f"Error: RTM generation prompt file not found",
+                        tool_call_id=tool_call_id
+                    )
+                ]
+            })
+        
+        # Generate RTM using AI
+        generated_file_path = generate_rtm_from_requirements(
+            requirements_content=requirements_content,
+            context_content=context_content,
+            rtm_prompt_path=rtm_prompt_path,
+            output_rtm_md_path=rtm_md_path
+        )
+        
+        # Read the generated RTM content
+        with open(generated_file_path, 'r', encoding='utf-8') as f:
+            rtm_content = f.read()
+        
+        logger.info(f"AI-generated RTM saved to: {generated_file_path}")
+        
+        return Command(update={
+            "rtm": rtm_content,
+            "rtm_file_path": generated_file_path,
+            "messages": [
+                ToolMessage(
+                    f"Successfully generated Requirements Traceability Matrix (RTM) mapping requirements to test case IDs. Saved to {os.path.basename(generated_file_path)}",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating RTM: {str(e)}")
+        return Command(update={
+            "messages": [
+                ToolMessage(
+                    f"Error generating RTM: {str(e)}",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        })
+
 # LLM initialization
 llm = ChatDeepSeek(
     model=settings.llm.model_name,
@@ -292,7 +461,7 @@ llm_non_streaming = ChatDeepSeek(
     api_key=settings.llm.api_key,
 )
 
-tools = [generate_testCases_fromRequirements_tool, generate_requirements_from_document_pdf_tool]
+tools = [generate_testCases_fromRequirements_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool]
 llm_with_tools = llm_non_streaming.bind_tools(tools)  # Use non-streaming for tools
 tools_node = ToolNode(tools)
 

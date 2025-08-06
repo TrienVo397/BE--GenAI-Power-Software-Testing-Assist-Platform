@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def load_main_system_prompt() -> str:
     """Load the main system prompt from file"""
     try:
-        with open("ai/researchExample/Prompts/main_system_prompt.txt", "r") as f:
+        with open("ai/agents/main_system_prompt.txt", "r") as f:
             return f.read()
     except FileNotFoundError:
         logger.warning("Main system prompt file not found, using default")
