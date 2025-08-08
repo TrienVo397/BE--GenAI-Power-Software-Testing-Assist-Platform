@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import Session
 from datetime import timedelta
+from typing import List
 
 from app.schemas.user import UserCreate, UserRead, UserUpdate, Token, UserLogin, UserRegister
 from app.crud.user_crud import user_crud
@@ -112,6 +113,18 @@ def login_for_access_token(user_login: UserLogin, db: Session = Depends(get_db))
 async def whoami(current_user: User = Depends(get_current_user)):
     """Get current user profile (whoami)"""
     return current_user
+
+@router.get("/", response_model=List[UserRead])
+def get_users(
+    page: int = Query(1, ge=1, description="Page number (1-based)"),
+    size: int = Query(10, ge=1, le=100, description="Number of users per page"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of users with pagination"""
+    skip = (page - 1) * size
+    users = user_crud.get_multi(db=db, skip=skip, limit=size)
+    return users
 
 # Existing CRUD endpoints
 @router.post("/", response_model=UserRead)
