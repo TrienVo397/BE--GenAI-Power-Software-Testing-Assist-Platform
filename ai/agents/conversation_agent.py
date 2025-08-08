@@ -250,6 +250,60 @@ def generate_rtm_fromRequirements_tool(
     except Exception as e:
         return Command(update={"messages": [ToolMessage(f"Error: {e}", tool_call_id=tool_call_id)]})
 
+@tool
+def get_requirement_info_by_lookup_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    target_key: Annotated[str, 'The column name to look up in the Markdown table'],
+    target_value: Annotated[str, 'The value to match in the Markdown table']
+) -> Command:
+    """
+    Inquiry the requirements that match with the target key-value and get the full information of those requirements (ID, description, priority, dependency)
+
+    **Behavior**
+    - Parses the Markdown requirements file and finds rows where the target column matches the target value.
+    - Returns a list of dictionaries for all matching requirements.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned requirements, else the message is an empty list.
+
+    **Note**
+    - The Markdown table must have headers matching the column names.
+    - The function is case-insensitive for keys and values.
+    """
+    import os
+    import re
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage("Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    with open(req_path, "r", encoding="utf-8") as f:
+        md_text = f.read()
+
+    # Extract Markdown table
+    table_match = re.search(r"\|.*?\|\n\|[-| ]+\|\n((?:\|.*\|\n?)+)", md_text, re.DOTALL)
+    if not table_match:
+        return Command(update={"messages": [ToolMessage("No requirements table found.", tool_call_id=tool_call_id)]})
+
+    table = table_match.group(0).strip().split('\n')
+    headers = [h.strip() for h in table[0].split('|')[1:-1]]
+    results = []
+    for row in table[2:]:  # skip header and separator
+        cols = [c.strip() for c in row.split('|')[1:-1]]
+        if len(cols) == len(headers):
+            req_dict = dict(zip(headers, cols))
+            for k, v in req_dict.items():
+                if k.lower() == target_key.lower() and str(v).lower() == str(target_value).lower():
+                    results.append(req_dict)
+                    break
+
+    return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
+
 # LLM initialization
 llm = ChatDeepSeek(
     model=settings.llm.model_name,
