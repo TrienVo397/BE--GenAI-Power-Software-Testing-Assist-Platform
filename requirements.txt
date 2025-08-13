@@ -21,6 +21,7 @@ langchain-core
 langchain-community
 langchain-deepseek
 langchain_anthropic
+langchain_google_genai
 langgraph
 sqlite-utils
 websockets

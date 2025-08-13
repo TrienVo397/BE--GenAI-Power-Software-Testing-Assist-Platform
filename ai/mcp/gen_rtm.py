@@ -1,5 +1,6 @@
 # c:\Users\dorem\Documents\GitHub\BE--GenAI-Power-Software-Testing-Assist-Platform\ai\mcp\gen_rtm.py
 import os
+from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
 from typing import TypedDict, Annotated
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
@@ -11,18 +12,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-api_max_tokens = 32000
+llm_api_key = os.getenv("ANTHROPIC_API_KEY")
+api_max_tokens = 64000                      # Maximum ammount
+
 
 class RTMAgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0.2,
-    max_tokens=api_max_tokens,
-    timeout=60,
-    max_retries=2,
+# llm = ChatDeepSeek(
+#     model="deepseek-chat",
+#     temperature=0.2,
+#     max_tokens=api_max_tokens,
+#     timeout=60,
+#     max_retries=2,
+# )
+
+llm = ChatAnthropic(
+    model="claude-3-7-sonnet-latest",
+    temperature = 0.3,
+    max_tokens = api_max_tokens,
+    api_key = llm_api_key
 )
 
 def generate_rtm_from_requirements(
@@ -65,7 +74,7 @@ Please generate a comprehensive Requirements Traceability Matrix (RTM) based on 
             ("user", user_message)
         ]
         
-        logger.info("Generating Requirements Traceability Matrix using ChatDeepSeek...")
+        logger.info("Generating Requirements Traceability Matrix ...")
         
         # Generate RTM using AI
         response = llm.invoke(messages)

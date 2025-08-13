@@ -5,6 +5,7 @@ from typing import TypedDict, Annotated, List, Dict, Any, AsyncGenerator, Option
 import uuid
 from dotenv import load_dotenv
 
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_deepseek import ChatDeepSeek
@@ -46,10 +47,6 @@ def generate_requirements_from_document_pdf_tool(
     """
     Extracts requirements from a project SRS PDF document and generates Markdown files.
 
-    **Inputs:**
-    - `state["project_id"]` (UUID): The project identifier to locate the correct project folder
-    - `state["current_version"]` (str): The version folder name (e.g., 'v0', 'v1.0', 'v2.0') containing the PDF
-    
     **Behavior:**
     - Uses AI to analyze the PDF document and extract comprehensive requirements
     - Generates a structured requirements document in Markdown format
@@ -62,9 +59,13 @@ def generate_requirements_from_document_pdf_tool(
     **User Interaction:**
     - Don't mention the internal file paths. Always refer to the document by its filename and version only.
 
+    **Note**
+    - The file will be name "SRS.pdf" do not mention about it, if no "SRS.pdf" file found, use the file name that most sensible.
     """
     import os, sys, glob
 
+    logger.info("Starting requirements extraction from document...")
+    
     project_id = state.get("project_id")
     version = state.get("current_version")
     if not project_id or not version:
@@ -120,9 +121,6 @@ def generate_testCases_from_RTM_tool(
     """
     Generates test cases from the Requirements Traceability Matrix (RTM).
 
-    **Inputs:**
-    - `state["project_id"]` (UUID): The project identifier to locate the RTM file
-
     **Behavior:**
     - Reads the RTM from the project's artifacts folder
     - Extracts test case IDs and descriptions
@@ -134,6 +132,9 @@ def generate_testCases_from_RTM_tool(
     - Adds a success message to `state["messages"]`
     """
     import os, sys
+    
+    logger.info("Starting test case generation from RTM...")
+    
     project_id = state.get("project_id")
     if not project_id:
         return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
@@ -178,7 +179,7 @@ def generate_testCases_from_RTM_tool(
         out_path = generate_test_cases_from_rtm( rtm_content = rtm_content,
             path_to_initPrompt_1=prompt_paths["init_1"],
             path_to_initPrompt_2=prompt_paths["init_2"],
-            path_to_reflection_Prompt=prompt_paths["reflection"],
+            path_to_reflectionPrompt=prompt_paths["reflection"],
             path_to_finalPrompt=prompt_paths["final"],
             out_path=out_path)
 
@@ -199,10 +200,6 @@ def generate_rtm_fromRequirements_tool(
     Generates a Requirements Traceability Matrix (RTM) from provided requirements in Markdown format.
     To create a comprehensive mapping between requirements and test cases to ensure complete test coverage.
 
-    **Inputs:**
-    - `state["project_id"]` (UUID): The project identifier to locate the correct project folder
-    - Uses standard file paths: requirement.md and requirement_context.md in project/artifacts folder
-
     **Behavior:**
     - Reads the requirements and context from their respective files
     - Analyzes requirements and maps them to test cases with IDs and descriptions
@@ -217,6 +214,8 @@ def generate_rtm_fromRequirements_tool(
     """
     import os, sys
 
+    logger.info("Starting RTM generation from requirements...")
+    
     project_id = state.get("project_id")
     if not project_id:
         return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
@@ -305,26 +304,40 @@ def get_requirement_info_by_lookup_tool(
     return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
 # LLM initialization
-llm = ChatDeepSeek(
-    model=settings.llm.model_name,
-    temperature=settings.llm.temperature,
-    max_tokens=settings.llm.max_tokens,
-    timeout=settings.llm.timeout,
-    max_retries=settings.llm.max_retries,
-    api_key=settings.llm.api_key,
+# llm = ChatDeepSeek(
+#     model=settings.llm.model_name,
+#     temperature=settings.llm.temperature,
+#     max_tokens=settings.llm.max_tokens,
+#     timeout=settings.llm.timeout,
+#     max_retries=settings.llm.max_retries,
+#     api_key=settings.llm.api_key,
+# )
+
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
 # Create a separate non-streaming LLM for regular calls
-llm_non_streaming = ChatDeepSeek(
-    model=settings.llm.model_name,
-    temperature=settings.llm.temperature,
-    max_tokens=settings.llm.max_tokens,
-    timeout=settings.llm.timeout,
-    max_retries=settings.llm.max_retries,
-    api_key=settings.llm.api_key,
+# llm_non_streaming = ChatDeepSeek(
+#     model=settings.llm.model_name,
+#     temperature=settings.llm.temperature,
+#     max_tokens=settings.llm.max_tokens,
+#     timeout=settings.llm.timeout,
+#     max_retries=settings.llm.max_retries,
+#     api_key=settings.llm.api_key,
+# )
+
+llm_non_streaming = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
-tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool]
+tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool]
 llm_with_tools = llm_non_streaming.bind_tools(tools)  # Use non-streaming for tools
 tools_node = ToolNode(tools)
 
@@ -391,6 +404,7 @@ async def stream_agent_response(
             # Use the full LangGraph agent with tools
             logger.info("Using LangGraph agent with tools")
             
+            logger.info(f"Conversation state: {conversation_state}")
             # For now, we'll use invoke and then stream the final response
             # TODO: Implement proper streaming with tool calls
             result = graph.invoke(conversation_state)

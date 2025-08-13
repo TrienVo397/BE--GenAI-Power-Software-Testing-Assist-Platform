@@ -35,11 +35,13 @@ Generate a Test Case Matrix in Markdown format that lists all test cases in a ta
 
 **Example Markdown Output:**
 
+```markdown
 | Test Case ID | Requirement ID | Category | Test Case Description | Test Type | Test Steps | Priority | Preconditions | Expected Result |
 |--------------|---------------|----------|----------------------|-----------|------------|----------|---------------|----------------|
 | TC-001       | REQ-001       | Functional | Verify user can log in with valid credentials | Functional | 1. Go to login page<br>2. Enter valid credentials<br>3. Click login | High | User is registered | User is logged in successfully |
 | TC-002       | REQ-001       | Functional | Validate error message on invalid login | Functional | 1. Go to login page<br>2. Enter invalid credentials<br>3. Click login | Critical | User is not registered | Error message is displayed |
 | ...          | ...           | ...      | ...                  | ...       | ...        | ...      | ...           | ...            |
+```
 
 **End of Example**
 

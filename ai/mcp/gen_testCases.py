@@ -41,8 +41,7 @@ def generate_test_cases_from_rtm(rtm_content: str,
     """
     import json
     from langchain_core.messages import HumanMessage
-    from langchain_core.runnables.graph import StateGraph
-    from langchain_core.runnables import START, END
+    from langgraph.graph import StateGraph, START, END
 
     # Load prompts
     with open(path_to_initPrompt_1, 'r') as f:
@@ -55,7 +54,7 @@ def generate_test_cases_from_rtm(rtm_content: str,
         final = f.read()
 
     # Prompt content
-    content_initial = [
+    content_initial= [
         {"type": "text", "text": init_1},
         {"type": "text", "text": rtm_content},
         {"type": "text", "text": init_2}

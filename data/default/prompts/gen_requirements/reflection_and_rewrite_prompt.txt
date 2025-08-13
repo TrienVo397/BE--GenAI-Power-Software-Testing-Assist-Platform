@@ -25,4 +25,4 @@ To analyze and improve this document, follow these steps:
 
 4. Review your refined document to ensure it meets the criteria of being exhaustive, complete, accurate, concise, and not redundant.
 
-5. **Provide your final refined requirements document in complete Markdown format.** Your response must be a well-formatted Markdown document ready to be saved as requirement.md file. Include all sections: Overview, Requirements List, and Summary with updated counts.
+5. **Provide your final refined requirements document in complete Markdown format.** Your response must be a well-formatted Markdown document ready to be saved as requirement.md file. ONLY create the markdown text, DO NOT generate anything else.
