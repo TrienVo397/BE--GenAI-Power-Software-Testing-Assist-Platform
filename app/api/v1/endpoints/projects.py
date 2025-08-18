@@ -11,7 +11,12 @@ from app.crud.document_version_crud import document_version_crud
 from app.crud.project_artifact_crud import project_artifact_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
+from app.core.authz import require_permissions
+from app.core.permissions import Permission
 from app.models.user import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -19,10 +24,10 @@ router = APIRouter()
 def create_project(
     project_simple: ProjectCreateSimple, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.PROJECT_CREATE))
 ):
     """
-    Create new project with required name and optional meta_data and note fields.
+    Create new project (Manager/Tester only)
     Authentication is required via JWT token.
     User IDs for created_by and updated_by are automatically set from the authenticated user.
     """
@@ -110,14 +115,20 @@ def create_project(
     return new_project
 
 @router.get("/{project_id}", response_model=ProjectRead)
-def read_project(project_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Get project by ID"""
+def read_project(
+    project_id: uuid.UUID, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permissions(Permission.PROJECT_READ))
+):
+    """Get project by ID (All authenticated users can read)"""
     db_project = project_crud.get(db, project_id=project_id)
     if db_project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Project not found"
         )
+    
+    logger.info(f"User {current_user.username} ({current_user.get_roles()}) read project {db_project.name}")
     return db_project
 
 @router.get("/", response_model=List[ProjectRead])
@@ -125,10 +136,10 @@ def read_projects(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.PROJECT_READ))
 ):
     """
-    Get all projects created by the current user with pagination.
+    Get all projects created by the current user with pagination (All authenticated users can read)
     Authentication is required via JWT token.
     """
     projects = project_crud.get_by_user(
@@ -137,6 +148,8 @@ def read_projects(
         skip=skip, 
         limit=limit
     )
+    
+    logger.info(f"User {current_user.username} ({current_user.get_roles()}) read {len(projects)} projects")
     return projects
 
 @router.put("/{project_id}", response_model=ProjectRead)
@@ -144,29 +157,36 @@ def update_project(
     project_id: uuid.UUID, 
     project: ProjectUpdate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # Require JWT authentication
+    current_user: User = Depends(require_permissions(Permission.PROJECT_UPDATE))
 ):
-    """Update project"""
+    """Update project (Manager/Tester only)"""
     db_project = project_crud.get(db, project_id=project_id)
     if db_project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Project not found"
         )
-    # Use the updated CRUD method that accepts user_id
-    return project_crud.update(db=db, project=project, project_id=project_id, user_id=current_user.id)
+    
+    updated_project = project_crud.update(db=db, project=project, project_id=project_id, user_id=current_user.id)
+    if updated_project:
+        logger.info(f"User {current_user.username} ({current_user.get_roles()}) updated project {updated_project.name}")
+    return updated_project
 
 @router.delete("/{project_id}", response_model=ProjectRead)
 def delete_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # Require JWT authentication
+    current_user: User = Depends(require_permissions(Permission.PROJECT_DELETE))
 ):
-    """Delete project"""
+    """Delete project (Manager only)"""
     db_project = project_crud.get(db, project_id=project_id)
     if db_project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Project not found"
         )
-    return project_crud.delete(db=db, project_id=project_id)
+    
+    deleted_project = project_crud.delete(db=db, project_id=project_id)
+    if deleted_project:
+        logger.info(f"Manager {current_user.username} deleted project {deleted_project.name}")
+    return deleted_project

@@ -19,6 +19,8 @@ from app.crud.chat_crud import chat_session_crud, chat_message_crud
 from app.crud import document_version_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
+from app.core.permissions import Permission
+from app.core.authz import require_permissions
 from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -45,10 +47,10 @@ def load_main_system_prompt() -> str:
 def create_chat_session(
     session_simple: ChatSessionCreateSimple,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
 ):
     """
-    Create a new chat session.
+    Create a new chat session (Managers and Testers can create)
     Authentication is required via JWT token.
     User ID is automatically set from the authenticated user.
     """
@@ -85,6 +87,7 @@ def create_chat_session(
         context_window=session_data.context_window
     )
     
+    logger.info(f"User {current_user.username} ({current_user.get_roles()}) created chat session")
     return chat_session
 
 @router.get("/sessions", response_model=ChatListResponse)
@@ -93,9 +96,9 @@ def get_chat_sessions(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
 ):
-    """Get chat sessions for the current user"""
+    """Get chat sessions for the current user (All authenticated users can read their own chats)"""
     skip = (page - 1) * size
     
     if project_id:
@@ -133,7 +136,7 @@ def get_chat_sessions(
 def get_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
 ):
     """Get a specific chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -157,7 +160,7 @@ def get_chat_session_messages(
     session_id: uuid.UUID,
     limit: int = Query(50, ge=1, le=200, description="Number of recent messages to include"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
 ):
     """Get a chat session with its messages"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -191,7 +194,7 @@ def update_chat_message(
     sequence_num: int,
     content: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
 ):
     """Update a specific chat message"""
     # Verify session exists and user owns it
@@ -229,7 +232,7 @@ def delete_chat_message(
     session_id: uuid.UUID,
     sequence_num: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
 ):
     """Delete a specific chat message"""
     # Verify session exists and user owns it
@@ -266,7 +269,7 @@ def update_chat_session(
     session_id: uuid.UUID,
     session_update: ChatSessionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
 ):
     """Update a chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -296,7 +299,7 @@ def update_chat_session(
 def delete_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_DELETE))
 ):
     """Delete a chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -475,7 +478,7 @@ async def send_streaming_message(
     session_id: uuid.UUID,
     message_input: StreamingMessageInput,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
 ):
     """Send a message to a chat session and receive a streaming response"""
     # Verify session exists and user owns it

@@ -16,6 +16,8 @@ from app.utils.project_fs import (
     resolve_project_path
 )
 from app.core.security import get_current_user
+from app.core.permissions import Permission
+from app.core.authz import require_permissions
 from app.models.user import User
 from app.schemas.file import TextContentUpdate, FileInfo, FileResponse, DirectoryResponse, TextFileContent, FileListResponse
 
@@ -29,7 +31,7 @@ async def list_files(
     directory: Optional[str] = Query(None, description="Optional subdirectory path"),
     recursive: bool = Query(True, description="Whether to include subdirectories recursively"),
     include_hidden: bool = Query(False, description="Whether to include hidden files/directories (starting with '.')"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_READ))
 ):
     """
     List all files and directories in a project or specific directory
@@ -64,7 +66,7 @@ async def get_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file within project directory"),
     as_json: bool = Query(False, description="If true and file is text, returns content as JSON instead of raw file"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_READ))
 ):
     """
     Get the contents of a file from the project directory
@@ -144,7 +146,7 @@ async def upload_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path where to save the file"),
     file: UploadFile = File(..., description="File to upload"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_CREATE))
 ):
     """
     Upload a file to the project directory
@@ -172,7 +174,7 @@ async def upload_file(
 async def delete_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file or directory to delete"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_DELETE))
 ):
     """
     Delete a file or directory from the project
@@ -190,7 +192,7 @@ async def delete_file(
 async def create_directory(
     project_id: UUID = Path(..., description="The project ID"),
     directory_path: str = Path(..., description="Path for the new directory"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.DIRECTORY_CREATE))
 ):
     """
     Create a new directory in the project
@@ -207,7 +209,7 @@ async def create_directory(
 async def get_file_info(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file within project directory"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_READ))
 ):
     """
     Get information about a file or directory without downloading its contents
@@ -284,7 +286,7 @@ async def update_file_text(
     text_update: TextContentUpdate,
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to the file within project directory"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_UPDATE))
 ):
     """
     Update a text file with JSON content
@@ -338,7 +340,7 @@ async def update_file_upload(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to the file within project directory"),
     file: UploadFile = File(..., description="File to upload"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permissions(Permission.FILE_UPDATE))
 ):
     """
     Update a file by uploading a new version
