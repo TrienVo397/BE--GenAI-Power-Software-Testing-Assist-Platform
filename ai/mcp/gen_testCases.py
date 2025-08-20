@@ -1,9 +1,8 @@
 
 from langchain_anthropic import ChatAnthropic
 from typing import TypedDict, Annotated
-from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
+from langchain_core.messages import AnyMessage, AIMessage
 from langgraph.graph.message import add_messages
-from langgraph.graph import StateGraph, START, END
 from dotenv import load_dotenv
 import os
 
@@ -39,7 +38,7 @@ def generate_test_cases_from_rtm(rtm_content: str,
     Returns:
     - str: Path to the saved test cases file.
     """
-    import json
+
     from langchain_core.messages import HumanMessage
     from langgraph.graph import StateGraph, START, END
 

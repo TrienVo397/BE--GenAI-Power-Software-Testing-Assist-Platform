@@ -300,7 +300,6 @@ def get_requirement_info_by_lookup_tool(
                 if k.lower() == target_key.lower() and str(v).lower() == str(target_value).lower():
                     results.append(req_dict)
                     break
-
     return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
 # LLM initialization
