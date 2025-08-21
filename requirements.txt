@@ -25,3 +25,4 @@ langgraph
 sqlite-utils
 websockets
 PyPDF2
+langchain_google_genai
