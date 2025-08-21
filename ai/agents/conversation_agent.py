@@ -302,6 +302,54 @@ def get_requirement_info_by_lookup_tool(
                     break
     return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
+# ...existing code...
+
+@tool
+def get_requirement_info_from_description_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    description: Annotated[str, "The description that the tool uses to find full information"]
+) -> Command:
+    """
+    Inquiry requirements that meet the description and get the full information of those requirements (ID, description, priority, dependency).
+
+    **Behavior:**
+    - Reads requirements from the project's requirements Markdown file.
+    - Uses an LLM to parse and find requirements that align with the given description.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned requirements, else the message is an empty list.
+
+    **Note**
+    - This tool uses LLM to locate the requirement, thus, resource intensive. If it is possible to locate the requirement without natural language processing, use the other way or tool.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage(content="Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.requirement_info_from_description import requirement_info_from_description
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Requirement info module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        tool_answer_string = requirement_info_from_description(description, req_path)
+        return Command(update={"messages": [ToolMessage(content=tool_answer_string, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
+# ...existing code...
 # LLM initialization
 # llm = ChatDeepSeek(
 #     model=settings.llm.model_name,
@@ -404,8 +452,7 @@ async def stream_agent_response(
             logger.info("Using LangGraph agent with tools")
             
             logger.info(f"Conversation state: {conversation_state}")
-            # For now, we'll use invoke and then stream the final response
-            # TODO: Implement proper streaming with tool calls
+           # TODO: Implement proper streaming with tool calls
             result = graph.invoke(conversation_state)
             
             # Get the final AI message content
