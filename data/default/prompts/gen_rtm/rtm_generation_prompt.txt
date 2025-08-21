@@ -14,13 +14,6 @@ Analyze the provided requirements document (which contains a Requirements List w
 Generate a Requirements Traceability Matrix in Markdown format that maps each existing requirement to test cases:
 
 ```markdown
-# Requirements Traceability Matrix (RTM)
-
-## Project Overview
-- Brief description of what this RTM covers
-- Total number of requirements from the Requirements List
-- Key testing priorities and risk areas
-
 ## Requirements Traceability Matrix
 
 | Requirement ID | Title | Description | Category | Risk Level | Test Case ID | Test Case Description |
@@ -41,6 +34,7 @@ Generate a Requirements Traceability Matrix in Markdown format that maps each ex
    - Low Risk Requirements: 1-2 test cases
 4. **Test Case Descriptions**: Write clear, specific test case descriptions that validate the requirement
 5. **One Row Per Test Case**: Each test case gets its own row (repeat requirement info for multiple test cases)
+6. ONLY create the markdown. DO NOT generate anything else
 
 **Test Case Description Format:**
 - Start with action verbs: "Verify", "Validate", "Test", "Check", "Ensure"

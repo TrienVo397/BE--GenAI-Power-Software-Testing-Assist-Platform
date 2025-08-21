@@ -5,6 +5,7 @@ from typing import TypedDict, Annotated, List, Dict, Any, AsyncGenerator, Option
 import uuid
 from dotenv import load_dotenv
 
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_deepseek import ChatDeepSeek
@@ -46,117 +47,108 @@ def generate_requirements_from_document_pdf_tool(
     """
     Extracts requirements from a project SRS PDF document and generates Markdown files.
 
-    **Inputs:**
-    - `state["project_id"]` (UUID): The project identifier to locate the correct project folder
-    - `state["current_version"]` (str): The version folder name (e.g., 'v0', 'v1.0', 'v2.0') containing the PDF
-    - Uses 'srs.pdf' as the default filename
-    
     **Behavior:**
-    - Constructs the path to the PDF file using: data/project-{project_id}/versions/{current_version}/srs.pdf
-    - Validates that the PDF file exists at the constructed path
     - Uses AI to analyze the PDF document and extract comprehensive requirements
     - Generates a structured requirements document in Markdown format
-    - Saves requirement.md to the project's artifacts/ folder
-    - Saves requirement_context.md to the project's context/ folder
 
     **Outputs:**
-    - Updates `state["context"]` with the extracted summary content
-    - Updates `state["requirements"]` with the generated Markdown requirements document
-    - Updates `state["requirements_file_path"]` with the path to the generated requirement.md file
-    - Updates `state["context_file_path"]` with the path to the generated context file
     - Adds a success tool message in `state["messages"]`
+    - A new requirement.md in project's artifacts/ folder
+    - A new requirement_context.md in project's context/ folder
 
     **User Interaction:**
     - Don't mention the internal file paths. Always refer to the document by its filename and version only.
-    - The tool automatically handles all file management and path construction.
+
+    **Note**
+    - The file will be name "SRS.pdf" do not mention about it, if no "SRS.pdf" file found, use the file name that most sensible.
     """
-    import glob
-    import sys
-    import os
-    from datetime import datetime
+    import os, sys, glob
+
+    logger.info("Starting requirements extraction from document...")
     
-    logger.debug("Starting generate_requirements_from_document_pdf_tool")
-    # Add the project root to the path to ensure imports work
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    if project_root not in sys.path:
-        sys.path.append(project_root)
-    
+    project_id = state.get("project_id")
+    version = state.get("current_version")
+    if not project_id or not version:
+        msg = "Missing project ID" if not project_id else "Missing version"
+        return Command(update={"messages": [ToolMessage(f"Error: {msg}.", tool_call_id=tool_call_id)]})
+
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path: sys.path.append(root)
     try:
-        from ai.mcp.gen_requierments import generate_requirements_from_doc
-    except ImportError as e:
-        logger.error(f"Failed to import generate_requirements_from_doc: {e}")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    "Error: Requirements generation module not available",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
+        from ai.mcp.gen_requirements import generate_requirements_from_doc
+    except ImportError:
+        return Command(update={"messages": [ToolMessage("Error: Requirements module not available.", tool_call_id=tool_call_id)]})
+
+    base = f"data/project-{project_id}"
+    doc_path = f"{base}/versions/{version}/srs.pdf"
+    if not os.path.exists(doc_path):
+        pdfs = glob.glob(f"{base}/versions/{version}/*.pdf")
+        if not pdfs:
+            return Command(update={"messages": [ToolMessage(f"Error: No PDF found in version {version}.", tool_call_id=tool_call_id)]})
+        doc_path = pdfs[0]
+
+    prompts = {
+        "init_1": "data/default/prompts/gen_requirements/initial_prompt_1.txt",
+        "init_2": "data/default/prompts/gen_requirements/initial_prompt_2.txt",
+        "reflection": "data/default/prompts/gen_requirements/reflection_and_rewrite_prompt.txt",
+        "summary": "data/default/prompts/gen_requirements/context_summary.txt"
+    }
+    missing = [name for name, path in prompts.items() if not os.path.exists(path)]
+    if missing:
+        return Command(update={"messages": [ToolMessage(f"Error: Missing prompt files: {', '.join(missing)}", tool_call_id=tool_call_id)]})
+
+    try:
+        req_path = f"{base}/artifacts/requirement.md"
+        ctx_path = f"{base}/context/requirement_context.md"
+        req_path, ctx_path = generate_requirements_from_doc(
+            path_to_document_pdf=doc_path,
+            path_to_initPrompt_1=prompts["init_1"],
+            path_to_initPrompt_2=prompts["init_2"],
+            path_to_reflectionArewrite_Prompt=prompts["reflection"],
+            path_to_summaryPrompt=prompts["summary"],
+            output_requirements_md_path=req_path,
+            output_context_md_path=ctx_path
+        )
+        return Command(update={"messages": [ToolMessage(f"Requirements saved to {os.path.basename(req_path)} (version {version})", tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(f"Error processing document: {e}", tool_call_id=tool_call_id)]})
+
+@tool
+def generate_testCases_from_RTM_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """
+    Generates test cases from the Requirements Traceability Matrix (RTM).
+
+    **Behavior:**
+    - Reads the RTM from the project's artifacts folder
+    - Extracts test case IDs and descriptions
+    - Generates detailed test cases in Markdown format
+    - Saves the test cases to a file in the project's artifacts folder
+
+    **Outputs:**
+    - Updates `state["testCases"]` with generated test cases
+    - Adds a success message to `state["messages"]`
+    """
+    import os, sys
     
-    project_id = state.get('project_id')
-    current_version = state.get('current_version')
-    filename = 'srs.pdf'  # Default filename for SRS documents
+    logger.info("Starting test case generation from RTM...")
     
+    project_id = state.get("project_id")
     if not project_id:
-        logger.error("Project ID missing from state")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    "Error: Project ID is required to locate the document",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    
-    if not current_version:
-        logger.error("Current version missing from state")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    "Error: Current version is required to locate the document",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    
-    # Construct project-specific paths
-    base_path = f"data/project-{project_id}"
-    document_path = f"{base_path}/versions/{current_version}/{filename}"
-    
-    # Path to default prompts (can be made project-specific in the future)
-    prompts_base = "data/default/prompts/gen_requirements"
+        return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    base = f"data/project-{project_id}/artifacts"
+    rtm_path = f"{base}/requirements_traceability_matrix.md"
+    out_path = f"{base}/test_cases.md"
+    prompts_base = "data/default/prompts/gen_testCases"
     prompt_paths = {
         "init_1": f"{prompts_base}/initial_prompt_1.txt",
         "init_2": f"{prompts_base}/initial_prompt_2.txt", 
-        "reflection": f"{prompts_base}/reflection_and_rewrite_prompt.txt",
-        "summary": f"{prompts_base}/context_summary.txt"
+        "reflection": f"{prompts_base}/reflection_prompt.txt",
+        "final": f"{prompts_base}/final_prompt.txt"
     }
-    
-    logger.info(f"Looking for PDF document at: {document_path}")
-    
-    # Check if the PDF file exists
-    if not os.path.exists(document_path):
-        # Try to find any PDF files in the version folder as fallback
-        version_folder = f"{base_path}/versions/{current_version}"
-        pdf_pattern = f"{version_folder}/*.pdf"
-        pdf_files = glob.glob(pdf_pattern)
-        
-        if pdf_files:
-            document_path = pdf_files[0]  # Use the first PDF found
-            actual_filename = os.path.basename(document_path)
-            logger.info(f"PDF file '{filename}' not found, using '{actual_filename}' instead")
-        else:
-            logger.error(f"No PDF files found in {version_folder}")
-            return Command(update={
-                "messages": [
-                    ToolMessage(
-                        f"Error: No PDF document found in version {current_version}. Please ensure the SRS document is uploaded.",
-                        tool_call_id=tool_call_id
-                    )
-                ]
-            })
-    
     # Verify all prompt files exist
     missing_prompts = []
     for prompt_name, prompt_path in prompt_paths.items():
@@ -173,104 +165,31 @@ def generate_requirements_from_document_pdf_tool(
                 )
             ]
         })
-    
+    if not os.path.exists(rtm_path):
+        return Command(update={"messages": [ToolMessage("Error: RTM file not found. Please generate it first.", tool_call_id=tool_call_id)]})
+
     try:
-        logger.info(f"Processing PDF document: {document_path}")
-        
-        # Define output paths for the generated files
-        requirements_md_path = f"{base_path}/artifacts/requirement.md"
-        context_md_path = f"{base_path}/context/requirement_context.md"
-        
-        # Call the updated function with all paths including output paths
-        req_file_path, context_file_path = generate_requirements_from_doc(
-            path_to_document_pdf=document_path,
+        with open(rtm_path, 'r', encoding='utf-8') as f:
+            rtm_content = f.read()
+
+        root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if root not in sys.path: sys.path.append(root)
+
+        from ai.mcp.gen_testCases import generate_test_cases_from_rtm
+        out_path = generate_test_cases_from_rtm( rtm_content = rtm_content,
             path_to_initPrompt_1=prompt_paths["init_1"],
             path_to_initPrompt_2=prompt_paths["init_2"],
-            path_to_reflectionArewrite_Prompt=prompt_paths["reflection"],
-            path_to_summaryPrompt=prompt_paths["summary"],
-            output_requirements_md_path=requirements_md_path,
-            output_context_md_path=context_md_path
-        )
-        
-        # Read the generated content for state updates
-        with open(context_file_path, 'r', encoding='utf-8') as f:
-            context_content = f.read()
-            
-        with open(req_file_path, 'r', encoding='utf-8') as f:
-            requirements_content = f.read()
-        
-        logger.info(f"Requirements saved to: {req_file_path}")
-        logger.info(f"Context saved to: {context_file_path}")
-        
+            path_to_reflectionPrompt=prompt_paths["reflection"],
+            path_to_finalPrompt=prompt_paths["final"],
+            out_path=out_path)
+
+
         return Command(update={
-            "context": context_content,
-            "requirements": requirements_content,  # Now contains Markdown content
-            "requirements_file_path": req_file_path,
-            "context_file_path": context_file_path,
-            "messages": [
-                ToolMessage(
-                    f"Successfully generated requirements and saved to {os.path.basename(req_file_path)} (version {current_version})",
-                    tool_call_id=tool_call_id
-                )
-            ]
+            "messages": [ToolMessage(f"Test cases generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
         })
-        
+
     except Exception as e:
-        logger.error(f"Error generating requirements: {str(e)}")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    f"Error processing document: {str(e)}",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-
-@tool
-def generate_testCases_fromRequirements_tool(
-    state: Annotated[AgentState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """
-    Generates a list of test cases from provided requirements in Markdown format.
-
-    **Inputs:**
-    - `state["requirements"]` (str): A Markdown document containing structured requirements
-    - `state["context"]` (str): A brief summary to provide additional context
-
-    **Behavior:**
-    - If `requirements` or `context` are missing, returns an error message
-    - Processes the Markdown requirements document to generate structured test cases
-    - Returns a list of test cases in `state["testCases"]`
-
-    **Outputs:**
-    - Updates `state["testCases"]` with generated test cases
-    - Adds a success message to `state["messages"]`
-    """
-    requirements = state.get('requirements')
-    context = state.get('context')
-    if not requirements or not context:
-        logger.warning("Requirements or context missing for test case generation.")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    "Requirements or Context missing",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    logger.info("Generating test cases from requirements.")
-    # testCases_list = generate_test_cases_from_requirements(requirements, context)
-    testCases_list = ["Sample test case 1", "Sample test case 2"]  # Placeholder until real implementation
-    return Command(update={
-        "testCases": testCases_list,
-        "messages": [
-            ToolMessage(
-                "Successfully created test cases from the requirements",
-                tool_call_id=tool_call_id
-            )
-        ]
-    })
+        return Command(update={"messages": [ToolMessage(f"Error: {e}", tool_call_id=tool_call_id)]})
 
 @tool
 def generate_rtm_fromRequirements_tool(
@@ -279,189 +198,252 @@ def generate_rtm_fromRequirements_tool(
 ) -> Command:
     """
     Generates a Requirements Traceability Matrix (RTM) from provided requirements in Markdown format.
-    
-    **Purpose**: Creates a comprehensive mapping between requirements and test cases to ensure complete test coverage.
-    Each requirement is assigned a risk level and mapped to specific test case IDs.
-
-    **RTM Structure**: Requirements → Risk Assessment → Test Case IDs
-    - Maps each requirement to 2-5 test case IDs based on complexity and risk
-    - Provides traceability from requirements to test cases
-    - Includes coverage analysis and risk assessment
-
-    **Inputs:**
-    - `state["project_id"]` (UUID): The project identifier to locate the correct project folder
-    - Uses standard file paths: requirement.md and requirement_context.md in project artifacts/context folders
+    To create a comprehensive mapping between requirements and test cases to ensure complete test coverage.
 
     **Behavior:**
-    - Constructs file paths using: data/project-{project_id}/artifacts/requirement.md and data/project-{project_id}/context/requirement_context.md
-    - Validates that the requirements and context files exist at the constructed paths
     - Reads the requirements and context from their respective files
     - Analyzes requirements and maps them to test cases with IDs and descriptions
-    - Uses existing requirement IDs (REQ-001, REQ-002, etc.) from the Requirements List
-    - Maps each requirement to appropriate test case IDs based on risk level
-    - Saves the RTM as a Markdown file to the project's artifacts/ folder
-
+    
     **Outputs:**
-    - Updates `state["rtm"]` with the generated RTM content
-    - Updates `state["rtm_file_path"]` with the path to the generated rtm.md file
+    - A Markdown file as RTM to the project's artifacts/ folder
     - Adds a success tool message in `state["messages"]`
 
     **User Interaction:**
-    - The tool automatically handles all file management and path construction.
     - Don't mention the internal file paths. Always refer to the RTM by its filename only.
     - Emphasize that this creates requirement-to-test-case mapping for full traceability.
     """
-    import os
+    import os, sys
+
+    logger.info("Starting RTM generation from requirements...")
     
-    logger.debug("Starting generate_rtm_fromRequirements_tool")
-    
-    project_id = state.get('project_id')
-    
+    project_id = state.get("project_id")
     if not project_id:
-        logger.error("Project ID missing from state")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    "Error: Project ID is required to locate the requirements and generate RTM",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    
-    # Construct file paths based on project_id (same as requirements generation tool)
-    base_path = f"data/project-{project_id}"
-    requirements_file_path = f"{base_path}/artifacts/requirement.md"
-    context_file_path = f"{base_path}/context/requirement_context.md"
-    
-    logger.info(f"Looking for requirements at: {requirements_file_path}")
-    logger.info(f"Looking for context at: {context_file_path}")
-    
-    # Verify the requirements and context files exist
-    if not os.path.exists(requirements_file_path):
-        logger.error(f"Requirements file not found: {requirements_file_path}")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    f"Error: Requirements file not found. Please generate requirements first using the PDF document.",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    
-    if not os.path.exists(context_file_path):
-        logger.error(f"Context file not found: {context_file_path}")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    f"Error: Context file not found. Please generate requirements first using the PDF document.",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-    
+        return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    base = f"data/project-{project_id}"
+    req_path = f"{base}/artifacts/requirement.md"
+    ctx_path = f"{base}/context/requirement_context.md"
+    rtm_path = f"{base}/artifacts/requirements_traceability_matrix.md"
+    prompt_path = "data/default/prompts/gen_rtm/rtm_generation_prompt.txt"
+
+    for path, label in [(req_path, "Requirements"), (ctx_path, "Context"), (prompt_path, "Prompt")]:
+        if not os.path.exists(path):
+            return Command(update={"messages": [ToolMessage(f"Error: {label} file not found.", tool_call_id=tool_call_id)]})
+
     try:
-        # Read requirements and context from files
-        with open(requirements_file_path, 'r', encoding='utf-8') as f:
-            requirements_content = f.read()
-        
-        with open(context_file_path, 'r', encoding='utf-8') as f:
-            context_content = f.read()
-        
-        logger.info("Generating Requirements Traceability Matrix from requirements using AI.")
-        
-        # Add the project root to the path to ensure imports work
-        import sys
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        if project_root not in sys.path:
-            sys.path.append(project_root)
-            sys.path.append(project_root)
-        
-        try:
-            from ai.mcp.gen_rtm import generate_rtm_from_requirements
-        except ImportError as e:
-            logger.error(f"Failed to import generate_rtm_from_requirements: {e}")
-            return Command(update={
-                "messages": [
-                    ToolMessage(
-                        "Error: RTM generation module not available",
-                        tool_call_id=tool_call_id
-                    )
-                ]
-            })
-        
-        # Define paths
-        rtm_md_path = f"{base_path}/artifacts/requirements_traceability_matrix.md"
-        rtm_prompt_path = "data/default/prompts/gen_rtm/rtm_generation_prompt.txt"
-        
-        # Verify prompt file exists
-        if not os.path.exists(rtm_prompt_path):
-            logger.error(f"RTM prompt file not found: {rtm_prompt_path}")
-            return Command(update={
-                "messages": [
-                    ToolMessage(
-                        f"Error: RTM generation prompt file not found",
-                        tool_call_id=tool_call_id
-                    )
-                ]
-            })
-        
-        # Generate RTM using AI
-        generated_file_path = generate_rtm_from_requirements(
-            requirements_content=requirements_content,
-            context_content=context_content,
-            rtm_prompt_path=rtm_prompt_path,
-            output_rtm_md_path=rtm_md_path
-        )
-        
-        # Read the generated RTM content
-        with open(generated_file_path, 'r', encoding='utf-8') as f:
-            rtm_content = f.read()
-        
-        logger.info(f"AI-generated RTM saved to: {generated_file_path}")
-        
+        with open(req_path, 'r', encoding='utf-8') as f: req = f.read()
+        with open(ctx_path, 'r', encoding='utf-8') as f: ctx = f.read()
+
+        root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if root not in sys.path: sys.path.append(root)
+
+        from ai.mcp.gen_rtm import generate_rtm_from_requirements
+        out_path = generate_rtm_from_requirements(req, ctx, prompt_path, rtm_path)
+
+        with open(out_path, 'r', encoding='utf-8') as f: rtm = f.read()
+
         return Command(update={
-            "rtm": rtm_content,
-            "rtm_file_path": generated_file_path,
-            "messages": [
-                ToolMessage(
-                    f"Successfully generated Requirements Traceability Matrix (RTM) mapping requirements to test case IDs. Saved to {os.path.basename(generated_file_path)}",
-                    tool_call_id=tool_call_id
-                )
-            ]
-        })
-        
-    except Exception as e:
-        logger.error(f"Error generating RTM: {str(e)}")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    f"Error generating RTM: {str(e)}",
-                    tool_call_id=tool_call_id
-                )
-            ]
+            "messages": [ToolMessage(f"RTM generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
         })
 
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(f"Error: {e}", tool_call_id=tool_call_id)]})
+
+@tool
+def get_requirement_info_by_lookup_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    target_key: Annotated[str, 'The column name to look up in the Markdown table'],
+    target_value: Annotated[str, 'The value to match in the Markdown table']
+) -> Command:
+    """
+    Inquiry the requirements that match with the target key-value and get the full information of those requirements (ID, description, priority, dependency)
+
+    **Behavior**
+    - Parses the Markdown requirements file and finds rows where the target column matches the target value.
+    - Returns a list of dictionaries for all matching requirements.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned requirements, else the message is an empty list.
+
+    **Note**
+    - The Markdown table must have headers matching the column names.
+    - The function is case-insensitive for keys and values.
+    """
+    import os
+    import re
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage("Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    with open(req_path, "r", encoding="utf-8") as f:
+        md_text = f.read()
+
+    # Extract Markdown table
+    table_match = re.search(r"\|.*?\|\n\|[-| ]+\|\n((?:\|.*\|\n?)+)", md_text, re.DOTALL)
+    if not table_match:
+        return Command(update={"messages": [ToolMessage("No requirements table found.", tool_call_id=tool_call_id)]})
+
+    table = table_match.group(0).strip().split('\n')
+    headers = [h.strip() for h in table[0].split('|')[1:-1]]
+    results = []
+    for row in table[2:]:  # skip header and separator
+        cols = [c.strip() for c in row.split('|')[1:-1]]
+        if len(cols) == len(headers):
+            req_dict = dict(zip(headers, cols))
+            for k, v in req_dict.items():
+                if k.lower() == target_key.lower() and str(v).lower() == str(target_value).lower():
+                    results.append(req_dict)
+                    break
+    return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
+
+# ...existing code...
+
+@tool
+def get_requirement_info_from_description_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    description: Annotated[str, "The description that the tool uses to find full information"]
+) -> Command:
+    """
+    Inquiry requirements that meet the description and get the full information of those requirements (ID, description, priority, dependency).
+
+    **Behavior:**
+    - Reads requirements from the project's requirements Markdown file.
+    - Uses an LLM to parse and find requirements that align with the given description.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned requirements, else the message is an empty list.
+
+    **Note**
+    - This tool uses LLM to locate the requirement, thus, resource intensive. If it is possible to locate the requirement without natural language processing, use the other way or tool.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage(content="Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.requirement_info_from_description import requirement_info_from_description
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Requirement info module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        tool_answer_string = requirement_info_from_description(description, req_path)
+        return Command(update={"messages": [ToolMessage(content=tool_answer_string, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
+
+# ...existing code...
+
+@tool
+def change_requirement_info_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    req_id: Annotated[str, "The ID of the requirement that needs change. The tool uses this to find the targeted requirement"],
+    attribute: Annotated[str, 'The attribute inside the requirement dictionary that needs change. Must be a valid column name'],
+    value: Annotated[str, 'The value that the attribute of the requirement will change into']
+) -> Command:
+    """
+    Change the information of a requirement (i.e., update one attribute value in the Markdown requirements table).
+
+    **Behavior**
+    - Finds the requirement row by ID in the Markdown file.
+    - Updates the specified attribute (column) with the new value.
+    - If the requirement or attribute does not exist, returns an error ToolMessage.
+
+    **Output**
+    - Updates the requirements Markdown file in-place.
+    - Adds a success ToolMessage.
+
+    **Note**
+    - The requirements file must exist.
+    - Use other tools to locate the requirement ID if needed.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage(content="Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.change_requirement_info import change_requirement_info
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Change requirement module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        result, msg = change_requirement_info(req_path, req_id, attribute, value)
+        if result:
+            return Command(update={"messages": [ToolMessage(content="Successfully modified the requirement.", tool_call_id=tool_call_id)]})
+        else:
+            return Command(update={"messages": [ToolMessage(content=msg, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
+# ...existing code...
+
+# ...existing code...
 # LLM initialization
-llm = ChatDeepSeek(
-    model=settings.llm.model_name,
-    temperature=settings.llm.temperature,
-    max_tokens=settings.llm.max_tokens,
-    timeout=settings.llm.timeout,
-    max_retries=settings.llm.max_retries,
-    api_key=settings.llm.api_key,
+# llm = ChatDeepSeek(
+#     model=settings.llm.model_name,
+#     temperature=settings.llm.temperature,
+#     max_tokens=settings.llm.max_tokens,
+#     timeout=settings.llm.timeout,
+#     max_retries=settings.llm.max_retries,
+#     api_key=settings.llm.api_key,
+# )
+
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
 # Create a separate non-streaming LLM for regular calls
-llm_non_streaming = ChatDeepSeek(
-    model=settings.llm.model_name,
-    temperature=settings.llm.temperature,
-    max_tokens=settings.llm.max_tokens,
-    timeout=settings.llm.timeout,
-    max_retries=settings.llm.max_retries,
-    api_key=settings.llm.api_key,
+# llm_non_streaming = ChatDeepSeek(
+#     model=settings.llm.model_name,
+#     temperature=settings.llm.temperature,
+#     max_tokens=settings.llm.max_tokens,
+#     timeout=settings.llm.timeout,
+#     max_retries=settings.llm.max_retries,
+#     api_key=settings.llm.api_key,
+# )
+
+llm_non_streaming = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
-tools = [generate_testCases_fromRequirements_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool]
+tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool,
+         get_requirement_info_from_description_tool,change_requirement_info_tool]
 llm_with_tools = llm_non_streaming.bind_tools(tools)  # Use non-streaming for tools
 tools_node = ToolNode(tools)
 
@@ -528,8 +510,8 @@ async def stream_agent_response(
             # Use the full LangGraph agent with tools
             logger.info("Using LangGraph agent with tools")
             
-            # For now, we'll use invoke and then stream the final response
-            # TODO: Implement proper streaming with tool calls
+            logger.info(f"Conversation state: {conversation_state}")
+           # TODO: Implement proper streaming with tool calls
             result = graph.invoke(conversation_state)
             
             # Get the final AI message content
