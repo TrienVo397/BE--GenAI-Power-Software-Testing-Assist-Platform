@@ -349,6 +349,64 @@ def get_requirement_info_from_description_tool(
     except Exception as e:
         return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
 
+
+# ...existing code...
+
+@tool
+def change_requirement_info_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    req_id: Annotated[str, "The ID of the requirement that needs change. The tool uses this to find the targeted requirement"],
+    attribute: Annotated[str, 'The attribute inside the requirement dictionary that needs change. Must be a valid column name'],
+    value: Annotated[str, 'The value that the attribute of the requirement will change into']
+) -> Command:
+    """
+    Change the information of a requirement (i.e., update one attribute value in the Markdown requirements table).
+
+    **Behavior**
+    - Finds the requirement row by ID in the Markdown file.
+    - Updates the specified attribute (column) with the new value.
+    - If the requirement or attribute does not exist, returns an error ToolMessage.
+
+    **Output**
+    - Updates the requirements Markdown file in-place.
+    - Adds a success ToolMessage.
+
+    **Note**
+    - The requirements file must exist.
+    - Use other tools to locate the requirement ID if needed.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    req_path = f"data/project-{project_id}/artifacts/requirement.md"
+    if not os.path.exists(req_path):
+        return Command(update={"messages": [ToolMessage(content="Requirements file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.change_requirement_info import change_requirement_info
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Change requirement module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        result, msg = change_requirement_info(req_path, req_id, attribute, value)
+        if result:
+            return Command(update={"messages": [ToolMessage(content="Successfully modified the requirement.", tool_call_id=tool_call_id)]})
+        else:
+            return Command(update={"messages": [ToolMessage(content=msg, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
+# ...existing code...
+
 # ...existing code...
 # LLM initialization
 # llm = ChatDeepSeek(
@@ -384,7 +442,8 @@ llm_non_streaming = ChatGoogleGenerativeAI(
     api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
-tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool]
+tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool,
+         get_requirement_info_from_description_tool,change_requirement_info_tool]
 llm_with_tools = llm_non_streaming.bind_tools(tools)  # Use non-streaming for tools
 tools_node = ToolNode(tools)
 
