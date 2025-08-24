@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
-from langchain_deepseek import ChatDeepSeek
 from langgraph.prebuilt import ToolNode, InjectedState, tools_condition
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
@@ -20,7 +19,7 @@ from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
-
+load_dotenv()
 # Load main system prompt
 def load_main_system_prompt() -> str:
     """Load the main system prompt from file"""
@@ -417,12 +416,13 @@ def change_requirement_info_tool(
 #     max_retries=settings.llm.max_retries,
 #     api_key=settings.llm.api_key,
 # )
+google_llm_api_key = os.getenv("GOOGLE_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=0.3,
     max_tokens = None,
-    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
+    api_key = google_llm_api_key,
 )
 
 # Create a separate non-streaming LLM for regular calls
