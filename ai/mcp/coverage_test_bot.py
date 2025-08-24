@@ -1,7 +1,6 @@
 import os
 import json
-import argparse
-from typing import TypedDict, List, Dict
+from typing import TypedDict, List, Dict, Any
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
@@ -19,13 +18,13 @@ class AgentState(TypedDict, total=False):
     requirements_content: str
     rtm_content: str
     test_cases_content: str
-    requirements_list: List[Dict]
-    test_cases_list: List[Dict]
-    mapping: List[Dict]
-    requirement_coverage: Dict
-    feature_coverage: Dict
-    high_risk_coverage: Dict
-    report_content: str
+    requirements_list: List[Dict[str, Any]]
+    test_cases_list: List[Dict[str, Any]]
+    mapping: List[Dict[str, Any]]
+    requirement_coverage: Dict[str, Any]
+    feature_coverage: Dict[str, Any]
+    high_risk_coverage: Dict[str, Any]
+    report_content: Dict[str, Any]
 
 # 2) Initialize a zero-temperature LLM for deterministic JSON extraction
 llm = ChatGoogleGenerativeAI(
@@ -115,24 +114,33 @@ def requirement_coverage_metrics(state: AgentState) -> AgentState:
     return { "requirement_coverage": { "total_requirements": total, "covered_requirements": covered, "requirement_coverage_percent": round(pct, 2), } }
 
 def feature_coverage_metrics(state: AgentState) -> AgentState:
-    # "Functional" requirements coverage
-    functional_reqs = [r for r in state["requirements_list"] if r.get("category", "").lower() == "functional"]
-    total = len(functional_reqs)
-    covered = sum(1 for r in functional_reqs if any(m["requirement_id"] == r["id"] and m["covered_by"] for m in state["mapping"]))
-    pct = covered / total * 100 if total else 0.0
+    """
+    Measures the percentage of functional requirements (features) that are covered by at least one test case.
+    Calculation: (number of functional requirements with at least one covering test case) / (total functional requirements)
+    """
+    functional_reqs = [r for r in state["requirements_list"] if r.get("category", "").strip().lower() == "functional"]
+    total_functional = len(functional_reqs)
+    covered_functional = sum(
+        1 for r in functional_reqs
+        if any(m["requirement_id"] == r["id"] and m["covered_by"] for m in state["mapping"])
+    )
+    pct = covered_functional / total_functional * 100 if total_functional else 0.0
     return {
         "feature_coverage": {
-            "total_functional_requirements": total,
-            "covered_functional_requirements": covered,
+            "total_functional_requirements": total_functional,
+            "covered_functional_requirements": covered_functional,
             "functional_coverage_percent": round(pct, 2),
         }
     }
 
 def high_risk_coverage_metrics(state: AgentState) -> AgentState:
     # "High" risk requirements coverage
-    high_risk_reqs = [r for r in state["requirements_list"] if r.get("risk", "").lower() == "high"]
+    high_risk_reqs = [r for r in state["requirements_list"] if r.get("risk", "").strip().lower() == "high"]
     total = len(high_risk_reqs)
-    covered = sum(1 for r in high_risk_reqs if any(m["requirement_id"] == r["id"] and m["covered_by"] for m in state["mapping"]))
+    covered = sum(
+        1 for r in high_risk_reqs
+        if any(m["requirement_id"] == r["id"] and m["covered_by"] for m in state["mapping"])
+    )
     pct = covered / total * 100 if total else 0.0
     return {
         "high_risk_coverage": {
@@ -143,49 +151,92 @@ def high_risk_coverage_metrics(state: AgentState) -> AgentState:
     }
 
 def generate_report(state: AgentState) -> AgentState: 
-    m = state["requirement_coverage"]
-    f = state["feature_coverage"]
-    h = state["high_risk_coverage"]
-    lines = [
-        "# Test Coverage Report",
-        "",
-        "## Requirement Coverage",
-        f"- Total Requirements: {m['total_requirements']}",
-        f"- Covered Requirements: {m['covered_requirements']}",
-        f"- Requirement Coverage: {m['requirement_coverage_percent']}%",
-        "",
-        "## Functional (Feature) Coverage",
-        f"- Total Functional Requirements: {f['total_functional_requirements']}",
-        f"- Covered Functional Requirements: {f['covered_functional_requirements']}",
-        f"- Functional Coverage: {f['functional_coverage_percent']}%",
-        "",
-        "## High-Risk Requirement Coverage",
-        f"- Total High-Risk Requirements: {h['total_high_risk_requirements']}",
-        f"- Covered High-Risk Requirements: {h['covered_high_risk_requirements']}",
-        f"- High-Risk Coverage: {h['high_risk_coverage_percent']}%",
-        "",
-        "## Requirement-to-TestCase Mapping",
-        "",
-    ]
-    for row in state["mapping"]:
-        covered = ", ".join(row["covered_by"]) or "None"
-        lines.append(f"- {row['requirement_id']} covered by: {covered}")
-    return {"report_content": "\n".join(lines)}
+    # Compose a structured JSON report
+    report = {
+        "requirement_coverage": state.get("requirement_coverage", {}),
+        "feature_coverage": state.get("feature_coverage", {}),
+        "high_risk_coverage": state.get("high_risk_coverage", {}),
+        "requirement_to_testcase_mapping": state.get("mapping", []),
+    }
+    return {"report_content": report}
 
 def write_report(state: AgentState) -> AgentState: 
     """ Save the report as data/project-<id>/artifacts/test_coverage_result.md """ 
     base = f"data/project-{state['project_id']}/artifacts" 
     os.makedirs(base, exist_ok=True) 
-    out_path = os.path.join(base, "test_coverage_result.md") 
+    out_path = os.path.join(base, "test_coverage_result.json") 
     with open(out_path, "w", encoding="utf-8") as f: 
-        f.write(state["report_content"]) 
+        json.dump(state["report_content"], f, indent=2)
     return {}
+
+def run_coverage_test(project_id: str) -> Dict[str, Any]:
+    """
+    Runs the full coverage analysis pipeline for the given project_id.
+    Returns the report content as a Python dict.
+    EXAMPLE OUTPUT DICTIONARY:
+    {
+        "requirement_coverage": {
+            "total_requirements": 10,
+            "covered_requirements": 5,
+            "coverage_percent": 50.0
+        },
+        "feature_coverage": {
+            "total_functional_requirements": 8,
+            "covered_functional_requirements": 4,
+            "functional_coverage_percent": 50.0
+        },
+        "high_risk_coverage": {
+            "total_high_risk_requirements": 5,
+            "covered_high_risk_requirements": 2,
+            "high_risk_coverage_percent": 40.0
+        },
+        "requirement_to_testcase_mapping": [
+            {
+                "requirement_id": REQ_1,
+                "testcase_ids": [101, 102]
+            },
+            {
+                "requirement_id": REQ_2,
+                "testcase_ids": [103]
+            },
+            {
+                "requirement_id": REQ_ 3,
+                "testcase_ids": []
+            }
+        ],
+
+    }
+    """
+    builder = StateGraph(AgentState)
+    builder.add_node(load_files, "load_files")
+    builder.add_node(extract_requirements, "extract_requirements")
+    builder.add_node(extract_test_cases, "extract_test_cases")
+    builder.add_node(build_mapping, "build_mapping")
+    builder.add_node(requirement_coverage_metrics, "requirement_coverage_metrics")
+    builder.add_node(feature_coverage_metrics, "feature_coverage_metrics")
+    builder.add_node(high_risk_coverage_metrics, "high_risk_coverage_metrics")
+    builder.add_node(generate_report, "generate_report")
+    builder.add_node(write_report, "write_report")
+
+    builder.add_edge(START, "load_files")
+    builder.add_edge("load_files", "extract_requirements")
+    builder.add_edge("extract_requirements", "extract_test_cases")
+    builder.add_edge("extract_test_cases", "build_mapping")
+    builder.add_edge("build_mapping", "requirement_coverage_metrics")
+    builder.add_edge("requirement_coverage_metrics", "feature_coverage_metrics")
+    builder.add_edge("feature_coverage_metrics", "high_risk_coverage_metrics")
+    builder.add_edge("high_risk_coverage_metrics", "generate_report")
+    builder.add_edge("generate_report", "write_report")
+    builder.add_edge("write_report", END)
+
+    graph = builder.compile()
+    final_state = graph.invoke({"project_id": project_id})
+    return final_state["report_content"]
 
 def main(): 
     parser = argparse.ArgumentParser() 
     parser.add_argument("--project_id", required=True, help="Your project identifier") 
     args = parser.parse_args()
-
 
     builder = StateGraph(AgentState) 
     builder.add_node(load_files, "load_files") 
