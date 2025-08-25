@@ -1,0 +1,321 @@
+{
+  "requirement_coverage": {
+    "total_requirements": 35,
+    "covered_requirements": 35,
+    "requirement_coverage_percent": 100.0
+  },
+  "feature_coverage": {
+    "total_functional_requirements": 29,
+    "covered_functional_requirements": 29,
+    "functional_coverage_percent": 100.0
+  },
+  "high_risk_coverage": {
+    "total_high_risk_requirements": 12,
+    "covered_high_risk_requirements": 12,
+    "high_risk_coverage_percent": 100.0
+  },
+  "requirement_to_testcase_mapping": [
+    {
+      "requirement_id": "REQ-001",
+      "covered_by": [
+        "TC-001",
+        "TC-002",
+        "TC-003"
+      ]
+    },
+    {
+      "requirement_id": "REQ-002",
+      "covered_by": [
+        "TC-004",
+        "TC-005",
+        "TC-006",
+        "TC-007",
+        "TC-008"
+      ]
+    },
+    {
+      "requirement_id": "REQ-003",
+      "covered_by": [
+        "TC-009",
+        "TC-010",
+        "TC-011"
+      ]
+    },
+    {
+      "requirement_id": "REQ-004",
+      "covered_by": [
+        "TC-012",
+        "TC-013",
+        "TC-014",
+        "TC-015",
+        "TC-016"
+      ]
+    },
+    {
+      "requirement_id": "REQ-005",
+      "covered_by": [
+        "TC-017",
+        "TC-018",
+        "TC-019",
+        "TC-020",
+        "TC-021"
+      ]
+    },
+    {
+      "requirement_id": "REQ-006",
+      "covered_by": [
+        "TC-022",
+        "TC-023",
+        "TC-024"
+      ]
+    },
+    {
+      "requirement_id": "REQ-007",
+      "covered_by": [
+        "TC-025",
+        "TC-026",
+        "TC-027",
+        "TC-028",
+        "TC-029"
+      ]
+    },
+    {
+      "requirement_id": "REQ-008",
+      "covered_by": [
+        "TC-030",
+        "TC-031",
+        "TC-032"
+      ]
+    },
+    {
+      "requirement_id": "REQ-009",
+      "covered_by": [
+        "TC-033",
+        "TC-034",
+        "TC-035",
+        "TC-036",
+        "TC-037"
+      ]
+    },
+    {
+      "requirement_id": "REQ-010",
+      "covered_by": [
+        "TC-038",
+        "TC-039",
+        "TC-040",
+        "TC-041",
+        "TC-042"
+      ]
+    },
+    {
+      "requirement_id": "REQ-011",
+      "covered_by": [
+        "TC-043",
+        "TC-044",
+        "TC-045",
+        "TC-046",
+        "TC-047"
+      ]
+    },
+    {
+      "requirement_id": "REQ-012",
+      "covered_by": [
+        "TC-048",
+        "TC-049",
+        "TC-050"
+      ]
+    },
+    {
+      "requirement_id": "REQ-013",
+      "covered_by": [
+        "TC-051",
+        "TC-052",
+        "TC-053"
+      ]
+    },
+    {
+      "requirement_id": "REQ-014",
+      "covered_by": [
+        "TC-054",
+        "TC-055",
+        "TC-056"
+      ]
+    },
+    {
+      "requirement_id": "REQ-015",
+      "covered_by": [
+        "TC-057",
+        "TC-058",
+        "TC-059"
+      ]
+    },
+    {
+      "requirement_id": "REQ-016",
+      "covered_by": [
+        "TC-060",
+        "TC-061",
+        "TC-062",
+        "TC-063",
+        "TC-064"
+      ]
+    },
+    {
+      "requirement_id": "REQ-017",
+      "covered_by": [
+        "TC-065",
+        "TC-066"
+      ]
+    },
+    {
+      "requirement_id": "REQ-018",
+      "covered_by": [
+        "TC-067",
+        "TC-068",
+        "TC-069"
+      ]
+    },
+    {
+      "requirement_id": "REQ-019",
+      "covered_by": [
+        "TC-070",
+        "TC-071",
+        "TC-072",
+        "TC-073",
+        "TC-074"
+      ]
+    },
+    {
+      "requirement_id": "REQ-020",
+      "covered_by": [
+        "TC-075",
+        "TC-076",
+        "TC-077",
+        "TC-078",
+        "TC-079"
+      ]
+    },
+    {
+      "requirement_id": "REQ-021",
+      "covered_by": [
+        "TC-080",
+        "TC-081",
+        "TC-082"
+      ]
+    },
+    {
+      "requirement_id": "REQ-022",
+      "covered_by": [
+        "TC-083",
+        "TC-084",
+        "TC-085"
+      ]
+    },
+    {
+      "requirement_id": "REQ-023",
+      "covered_by": [
+        "TC-086",
+        "TC-087",
+        "TC-088"
+      ]
+    },
+    {
+      "requirement_id": "REQ-024",
+      "covered_by": [
+        "TC-089",
+        "TC-090",
+        "TC-091"
+      ]
+    },
+    {
+      "requirement_id": "REQ-025",
+      "covered_by": [
+        "TC-092",
+        "TC-093",
+        "TC-094"
+      ]
+    },
+    {
+      "requirement_id": "REQ-026",
+      "covered_by": [
+        "TC-095",
+        "TC-096",
+        "TC-097",
+        "TC-098",
+        "TC-099"
+      ]
+    },
+    {
+      "requirement_id": "REQ-027",
+      "covered_by": [
+        "TC-100",
+        "TC-101",
+        "TC-102"
+      ]
+    },
+    {
+      "requirement_id": "REQ-028",
+      "covered_by": [
+        "TC-103",
+        "TC-104",
+        "TC-105"
+      ]
+    },
+    {
+      "requirement_id": "REQ-029",
+      "covered_by": [
+        "TC-106",
+        "TC-107",
+        "TC-108"
+      ]
+    },
+    {
+      "requirement_id": "REQ-030",
+      "covered_by": [
+        "TC-109",
+        "TC-110",
+        "TC-111"
+      ]
+    },
+    {
+      "requirement_id": "REQ-031",
+      "covered_by": [
+        "TC-112",
+        "TC-113",
+        "TC-114"
+      ]
+    },
+    {
+      "requirement_id": "REQ-032",
+      "covered_by": [
+        "TC-115",
+        "TC-116",
+        "TC-117"
+      ]
+    },
+    {
+      "requirement_id": "REQ-033",
+      "covered_by": [
+        "TC-118",
+        "TC-119"
+      ]
+    },
+    {
+      "requirement_id": "REQ-034",
+      "covered_by": [
+        "TC-120",
+        "TC-121",
+        "TC-122"
+      ]
+    },
+    {
+      "requirement_id": "REQ-035",
+      "covered_by": [
+        "TC-123",
+        "TC-124",
+        "TC-125",
+        "TC-126",
+        "TC-127"
+      ]
+    }
+  ]
+}

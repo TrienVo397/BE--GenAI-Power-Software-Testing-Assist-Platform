@@ -291,14 +291,25 @@ def get_requirement_info_by_lookup_tool(
     table = table_match.group(0).strip().split('\n')
     headers = [h.strip() for h in table[0].split('|')[1:-1]]
     results = []
+    
+    # Find the target column index
+    target_col_index = None
+    for i, header in enumerate(headers):
+        if header.lower() == target_key.lower():
+            target_col_index = i
+            break
+    
+    if target_col_index is None:
+        return Command(update={"messages": [ToolMessage(f"Column '{target_key}' not found in requirements table.", tool_call_id=tool_call_id)]})
+    
     for row in table[2:]:  # skip header and separator
         cols = [c.strip() for c in row.split('|')[1:-1]]
         if len(cols) == len(headers):
-            req_dict = dict(zip(headers, cols))
-            for k, v in req_dict.items():
-                if k.lower() == target_key.lower() and str(v).lower() == str(target_value).lower():
-                    results.append(req_dict)
-                    break
+            # Check only the target column for the match
+            if target_col_index < len(cols) and str(cols[target_col_index]).lower() == str(target_value).lower():
+                req_dict = dict(zip(headers, cols))
+                results.append(req_dict)
+    
     return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
 # ...existing code...

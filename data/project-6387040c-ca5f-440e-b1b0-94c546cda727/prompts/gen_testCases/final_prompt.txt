@@ -1,0 +1,48 @@
+You are tasked with re-creating test matrices based on a project document, previously generated test cases, a reflection on the generation performance, and potential areas for additional testing. Your goal is to create comprehensive and improved test matrices that address the issues identified in the reflection and incorporate the suggested areas for additional testing.
+
+First, review the following information:
+
+1. Project Document, 2. Previously Generated Test Cases, 3. Reflection on Generation Performance, 4. Potential Areas for Additional Testing in earlier messages:
+
+Analyze the provided information, paying special attention to the reflection and the potential areas for additional testing. Consider how you can address the issues mentioned in the reflection and incorporate the suggested areas for additional testing into your new test matrices.
+
+Create new test matrices that:
+1. Address the shortcomings identified in the reflection
+2. Incorporate the potential areas for additional testing
+3. Maintain the strengths of the previously generated test cases
+4. Ensure comprehensive coverage of the project requirements
+
+When creating your test matrices, follow these guidelines:
+- Organize tests into logical categories or modules
+- Ensure each test case is clear, concise, and testable
+- Include a mix of positive and negative test scenarios
+- Consider edge cases and boundary conditions
+- Prioritize tests based on their importance and potential impact
+
+**Output Requirements:**
+Generate a Test Case Matrix in Markdown format that lists all test cases in a table. For each test case, include the following columns:
+
+| Test Case ID | Requirement ID | Category | Test Case Description | Test Type | Test Steps | Priority | Preconditions | Expected Result |
+|--------------|---------------|----------|----------------------|-----------|------------|----------|---------------|----------------|
+| TC-001       | REQ-001       | [Category] | [Description]        | [Type]    | [Steps]    | [Priority] | [Preconditions] | [Expected Result] |
+| TC-002       | REQ-002       | [Category] | [Description]        | [Type]    | [Steps]    | [Priority] | [Preconditions] | [Expected Result] |
+| ...          | ...           | ...      | ...                  | ...       | ...        | ...      | ...           | ...            |
+
+**Critical Instructions:**
+- Present your entire response as a Markdown document and don't add any extra compnent.
+- Use the exact test case fields as shown above.
+- Include all test cases generated, organized in the table.
+
+**Example Markdown Output:**
+
+```markdown
+| Test Case ID | Requirement ID | Category | Test Case Description | Test Type | Test Steps | Priority | Preconditions | Expected Result |
+|--------------|---------------|----------|----------------------|-----------|------------|----------|---------------|----------------|
+| TC-001       | REQ-001       | Functional | Verify user can log in with valid credentials | Functional | 1. Go to login page<br>2. Enter valid credentials<br>3. Click login | High | User is registered | User is logged in successfully |
+| TC-002       | REQ-001       | Functional | Validate error message on invalid login | Functional | 1. Go to login page<br>2. Enter invalid credentials<br>3. Click login | Critical | User is not registered | Error message is displayed |
+| ...          | ...           | ...      | ...                  | ...       | ...        | ...      | ...           | ...            |
+```
+
+**End of Example**
+
+Remember to be thorough, clear, and concise in your test matrix creation. Your output must be a complete, well-formatted Markdown document ready to be saved as test_cases.md file.

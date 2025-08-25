@@ -17,9 +17,8 @@ class AgentState(TypedDict, total=False):
     project_id: str
     requirements_content: str
     rtm_content: str
-    test_cases_content: str
     requirements_list: List[Dict[str, Any]]
-    test_cases_list: List[Dict[str, Any]]
+    rtm_mappings: List[Dict[str, Any]]
     mapping: List[Dict[str, Any]]
     requirement_coverage: Dict[str, Any]
     feature_coverage: Dict[str, Any]
@@ -37,13 +36,12 @@ llm = ChatGoogleGenerativeAI(
 
 def load_files(state: AgentState) -> AgentState:
     """
-    Load the three markdown artifacts into memory.
+    Load the requirements and RTM markdown artifacts into memory.
     """
-    base = f"data/project-{state['project_id']}/artifacts"
+    base = os.path.join("data", f"project-{state['project_id']}", "artifacts")
     paths = {
         "requirements_content": os.path.join(base, "requirement.md"),
-        "rtm_content":        os.path.join(base, "requirements_traceability_matrix.md"),
-        "test_cases_content": os.path.join(base, "test_cases.md"),
+        "rtm_content": os.path.join(base, "requirements_traceability_matrix.md"),
     }
     out: AgentState = {}
     for key, p in paths.items():
@@ -59,50 +57,75 @@ def extract_requirements(state: AgentState) -> AgentState:
     prompt = f"""
     Extract a JSON array of requirements from the markdown below.
     Each item must have "id", "title", "description", "category", "risk", and "dependencies" fields.
+    
+    Return ONLY a valid JSON array, no markdown formatting, no explanations, just the JSON array.
 
     ```markdown
     {state['requirements_content']}
+    ```
     """
     resp = llm.invoke([HumanMessage(content=prompt)])
-    reqs = json.loads(resp.content)
+    # Clean response to handle markdown formatting
+    content = resp.content
+    if isinstance(content, list):
+        content = content[0] if content else ""
+    content = content.strip()
+    if content.startswith('```json'):
+        content = content[7:]
+    if content.endswith('```'):
+        content = content[:-3]
+    content = content.strip()
+    
+    reqs = json.loads(content)
     return {"requirements_list": reqs}
 
-def extract_test_cases(state: AgentState) -> AgentState:
+def extract_rtm_mappings(state: AgentState) -> AgentState:
     """
-    Ask the LLM to parse the test cases MD and return JSON:
+    Ask the LLM to parse the RTM and return JSON mappings:
     [
       {
-        "test_case_id": "...",
         "requirement_id": "...",
-        "category": "...",
-        "test_case_description": "...",
-        "test_type": "...",
-        "test_steps": "...",
-        "priority": "...",
-        "preconditions": "...",
-        "expected_result": "..."
+        "test_case_id": "...",
+        "test_case_description": "..."
       },
       ...
     ]
     """
     prompt = f"""
-    Extract a JSON array of test cases from the markdown below.
+    Extract a JSON array of requirement-to-test-case mappings from the Requirements Traceability Matrix below.
     Each item must have the following fields:
-    "test_case_id", "requirement_id", "category", "test_case_description", "test_type", "test_steps", "priority", "preconditions", "expected_result".
+    "requirement_id", "test_case_id", "test_case_description".
+    
+    Parse the table and create one entry for each row that maps a requirement to a test case.
+
+    Return ONLY a valid JSON array, no markdown formatting, no explanations, just the JSON array.
 
     ```markdown
-    {state['test_cases_content']}
+    {state['rtm_content']}
+    ```
     """
     resp = llm.invoke([HumanMessage(content=prompt)])
-    tcs = json.loads(resp.content)
-    return {"test_cases_list": tcs}
+    # Clean response to handle markdown formatting
+    content = resp.content
+    if isinstance(content, list):
+        content = content[0] if content else ""
+    content = content.strip()
+    if content.startswith('```json'):
+        content = content[7:]
+    if content.endswith('```'):
+        content = content[:-3]
+    content = content.strip()
+    
+    mappings = json.loads(content)
+    return {"rtm_mappings": mappings}
 
 def build_mapping(state: AgentState) -> AgentState:
-    """ Build a per-requirement map of which test cases cover it. """ 
+    """ Build a per-requirement map of which test cases cover it from RTM data. """ 
     mapping = [] 
     for req in state["requirements_list"]:
         rid = req["id"]
-        covered = [tc["test_case_id"] for tc in state["test_cases_list"] if tc["requirement_id"] == rid]
+        # Find all test cases mapped to this requirement in the RTM
+        covered = [rtm["test_case_id"] for rtm in state["rtm_mappings"] if rtm["requirement_id"] == rid]
         mapping.append({"requirement_id": rid, "covered_by": covered})
     return {"mapping": mapping}
 
@@ -161,8 +184,8 @@ def generate_report(state: AgentState) -> AgentState:
     return {"report_content": report}
 
 def write_report(state: AgentState) -> AgentState: 
-    """ Save the report as data/project-<id>/artifacts/test_coverage_result.md """ 
-    base = f"data/project-{state['project_id']}/artifacts" 
+    """ Save the report as data/project-<id>/artifacts/test_coverage_result.json """ 
+    base = os.path.join("data", f"project-{state['project_id']}", "artifacts")
     os.makedirs(base, exist_ok=True) 
     out_path = os.path.join(base, "test_coverage_result.json") 
     with open(out_path, "w", encoding="utf-8") as f: 
@@ -171,7 +194,7 @@ def write_report(state: AgentState) -> AgentState:
 
 def run_coverage_test(project_id: str) -> Dict[str, Any]:
     """
-    Runs the full coverage analysis pipeline for the given project_id.
+    Runs the full coverage analysis pipeline for the given project_id using RTM data.
     Returns the report content as a Python dict.
     EXAMPLE OUTPUT DICTIONARY:
     {
@@ -210,7 +233,7 @@ def run_coverage_test(project_id: str) -> Dict[str, Any]:
     builder = StateGraph(AgentState)
     builder.add_node(load_files, "load_files")
     builder.add_node(extract_requirements, "extract_requirements")
-    builder.add_node(extract_test_cases, "extract_test_cases")
+    builder.add_node(extract_rtm_mappings, "extract_rtm_mappings")
     builder.add_node(build_mapping, "build_mapping")
     builder.add_node(requirement_coverage_metrics, "requirement_coverage_metrics")
     builder.add_node(feature_coverage_metrics, "feature_coverage_metrics")
@@ -220,8 +243,8 @@ def run_coverage_test(project_id: str) -> Dict[str, Any]:
 
     builder.add_edge(START, "load_files")
     builder.add_edge("load_files", "extract_requirements")
-    builder.add_edge("extract_requirements", "extract_test_cases")
-    builder.add_edge("extract_test_cases", "build_mapping")
+    builder.add_edge("extract_requirements", "extract_rtm_mappings")
+    builder.add_edge("extract_rtm_mappings", "build_mapping")
     builder.add_edge("build_mapping", "requirement_coverage_metrics")
     builder.add_edge("requirement_coverage_metrics", "feature_coverage_metrics")
     builder.add_edge("feature_coverage_metrics", "high_risk_coverage_metrics")
@@ -233,34 +256,37 @@ def run_coverage_test(project_id: str) -> Dict[str, Any]:
     final_state = graph.invoke({"project_id": project_id})
     return final_state["report_content"]
 
-def main(): 
-    parser = argparse.ArgumentParser() 
-    parser.add_argument("--project_id", required=True, help="Your project identifier") 
-    args = parser.parse_args()
+# def main(): 
+#     parser = argparse.ArgumentParser() 
+#     parser.add_argument("--project_id", required=True, help="Your project identifier") 
+#     args = parser.parse_args()
 
-    builder = StateGraph(AgentState) 
-    builder.add_node(load_files, "load_files") 
-    builder.add_node(extract_requirements, "extract_requirements") 
-    builder.add_node(extract_test_cases, "extract_test_cases") 
-    builder.add_node(build_mapping, "build_mapping") 
-    builder.add_node(requirement_coverage_metrics, "requirement_coverage_metrics") 
-    builder.add_node(feature_coverage_metrics, "feature_coverage_metrics") 
-    builder.add_node(high_risk_coverage_metrics, "high_risk_coverage_metrics") 
-    builder.add_node(generate_report, "generate_report") 
-    builder.add_node(write_report, "write_report")
+#     builder = StateGraph(AgentState) 
+#     builder.add_node(load_files, "load_files") 
+#     builder.add_node(extract_requirements, "extract_requirements") 
+#     builder.add_node(extract_rtm_mappings, "extract_rtm_mappings") 
+#     builder.add_node(build_mapping, "build_mapping") 
+#     builder.add_node(requirement_coverage_metrics, "requirement_coverage_metrics") 
+#     builder.add_node(feature_coverage_metrics, "feature_coverage_metrics") 
+#     builder.add_node(high_risk_coverage_metrics, "high_risk_coverage_metrics") 
+#     builder.add_node(generate_report, "generate_report") 
+#     builder.add_node(write_report, "write_report")
 
-    builder.add_edge(START, "load_files") 
-    builder.add_edge("load_files", "extract_requirements") 
-    builder.add_edge("extract_requirements", "extract_test_cases") 
-    builder.add_edge("extract_test_cases", "build_mapping") 
-    builder.add_edge("build_mapping", "requirement_coverage_metrics") 
-    builder.add_edge("requirement_coverage_metrics", "feature_coverage_metrics") 
-    builder.add_edge("feature_coverage_metrics", "high_risk_coverage_metrics") 
-    builder.add_edge("high_risk_coverage_metrics", "generate_report") 
-    builder.add_edge("generate_report", "write_report") 
-    builder.add_edge("write_report", END)
+#     builder.add_edge(START, "load_files") 
+#     builder.add_edge("load_files", "extract_requirements") 
+#     builder.add_edge("extract_requirements", "extract_rtm_mappings") 
+#     builder.add_edge("extract_rtm_mappings", "build_mapping") 
+#     builder.add_edge("build_mapping", "requirement_coverage_metrics") 
+#     builder.add_edge("requirement_coverage_metrics", "feature_coverage_metrics") 
+#     builder.add_edge("feature_coverage_metrics", "high_risk_coverage_metrics") 
+#     builder.add_edge("high_risk_coverage_metrics", "generate_report") 
+#     builder.add_edge("generate_report", "write_report") 
+#     builder.add_edge("write_report", END)
 
-    graph = builder.compile() 
-    graph.invoke({"project_id": args.project_id})
+#     graph = builder.compile() 
+#     graph.invoke({"project_id": args.project_id})
 
-if __name__ == "__main__": main()
+# if __name__ == "__main__": main()
+
+result321 = run_coverage_test("6387040c-ca5f-440e-b1b0-94c546cda727")
+print(result321)
