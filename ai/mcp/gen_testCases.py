@@ -1,5 +1,6 @@
 
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import TypedDict, Annotated
 from langchain_core.messages import AnyMessage, AIMessage
 from langgraph.graph.message import add_messages
@@ -8,18 +9,25 @@ import os
 
 
 load_dotenv()
-llm_api_key = os.getenv("ANTHROPIC_API_KEY")
+anthropic_llm_api_key = os.getenv("ANTHROPIC_API_KEY")
+google_llm_api_key = os.getenv("GOOGLE_API_KEY")
 api_max_tokens = 64000                      # Maximum ammount
 
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
-llm = ChatAnthropic(
-    model="claude-3-7-sonnet-latest",
-    temperature = 0.3,
-    max_tokens = api_max_tokens,
-    api_key = llm_api_key
+# llm = ChatAnthropic(
+#     model="claude-3-7-sonnet-latest",
+#     temperature = 0.3,
+#     max_tokens = anthropic_llm_api_key,
+#     api_key = llm_api_key
+# )
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = google_llm_api_key,
 )
 
 def generate_test_cases_from_rtm(
@@ -122,7 +130,7 @@ def generate_test_cases_from_rtm(
     # Split RTM if needed
     rtm_chunks = split_rtm_table(rtm_content, max_chunk_tokens)
 
-    all_test_cases = []
+    all_markdown = []
     for i, chunk in enumerate(rtm_chunks):
         content_initial = [
             {"type": "text", "text": init_1},
@@ -134,33 +142,33 @@ def generate_test_cases_from_rtm(
         graph = build_graph(content_initial, content_reflection, content_final)
         result = graph.invoke({"messages": []})
         final_output = result["messages"][-1].content
-        # Assume output is JSON or JSON string, parse and extend
-        try:
-            if isinstance(final_output, str):
-                parsed = json.loads(final_output)
+        # Clean up Markdown: only keep header for first chunk
+        if isinstance(final_output, str):
+            lines = final_output.strip().splitlines()
+        else:
+            lines = str(final_output).strip().splitlines()
+        if i == 0:
+            # Keep all lines for the first chunk
+            all_markdown.extend(lines)
+        else:
+            # Remove header and separator lines (assume header is first 2 lines)
+            if len(lines) > 2:
+                all_markdown.extend(lines[2:])
             else:
-                parsed = final_output
-            if isinstance(parsed, list):
-                all_test_cases.extend(parsed)
-            elif isinstance(parsed, dict) and "test_cases" in parsed:
-                all_test_cases.extend(parsed["test_cases"])
-            else:
-                all_test_cases.append(parsed)
-        except Exception as e:
-            print(f"Error parsing chunk output: {e}")
-            all_test_cases.append(final_output)
+                all_markdown.extend(lines)
         # Add delay between chunk calls to avoid rate limit
         if i < len(rtm_chunks) - 1:
             time.sleep(delay_seconds)
 
-    # Write aggregated test cases to file
+    # Write aggregated Markdown to file
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     try:
         with open(out_path, 'w', encoding='utf-8') as f:
-            json.dump(all_test_cases, f, ensure_ascii=False, indent=2)
+            f.write('\n'.join(all_markdown))
         print(f"Test cases successfully written to: {out_path}")
     except Exception as e:
         print(f"Error writing test cases file: {e}")
         raise
 
     return out_path
+
