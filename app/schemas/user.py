@@ -18,13 +18,11 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     full_name: Optional[str] = None
     notes: Optional[str] = None
-    roles: Optional[str] = None  # JSON string for roles
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
 
 class UserRead(UserBase):
     id: uuid.UUID
-    roles: str  # JSON string of roles
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -35,25 +33,19 @@ class UserRead(UserBase):
 
 # Admin-specific schemas for user management
 class AdminUserCreate(UserBase):
-    """Admin schema for creating users with role assignment"""
+    """Admin schema for creating users - no global roles"""
     password: str
-    initial_roles: Optional[List[str]] = ["viewer"]  # List of role strings
     is_active: Optional[bool] = True
 
 class AdminUserUpdate(BaseModel):
-    """Admin schema for updating users with full control"""
+    """Admin schema for updating users"""
     username: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = None
     full_name: Optional[str] = None
     notes: Optional[str] = None
-    roles: Optional[List[str]] = None  # List of role strings
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
-
-class UserRoleUpdate(BaseModel):
-    """Schema specifically for updating user roles"""
-    roles: List[str]  # List of role strings (required)
 
 # Authentication schemas
 class Token(BaseModel):

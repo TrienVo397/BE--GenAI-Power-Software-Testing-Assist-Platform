@@ -20,7 +20,7 @@ from app.crud import document_version_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
 from app.core.permissions import Permission
-from app.core.authz import require_permissions
+# from app.core.authz import require_permissions  # DEPRECATED
 from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -47,13 +47,20 @@ def load_main_system_prompt() -> str:
 def create_chat_session(
     session_simple: ChatSessionCreateSimple,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Create a new chat session (Managers and Testers can create)
+    Create a new chat session - requires project membership
     Authentication is required via JWT token.
     User ID is automatically set from the authenticated user.
     """
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session_simple.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to create chat sessions in this project"
+        )
+    
     # Create session data with user ID from current user
     session_data = ChatSessionCreate(
         title=session_simple.title,
@@ -87,40 +94,36 @@ def create_chat_session(
         context_window=session_data.context_window
     )
     
-    logger.info(f"User {current_user.username} ({current_user.get_roles()}) created chat session")
+    logger.info(f"User {current_user.username}  created chat session")
     return chat_session
 
 @router.get("/sessions", response_model=ChatListResponse)
 def get_chat_sessions(
-    project_id: Optional[uuid.UUID] = Query(None, description="Filter by project ID"),
+    project_id: uuid.UUID = Query(..., description="Project ID (required)"),
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
+    current_user: User = Depends(get_current_user)
 ):
-    """Get chat sessions for the current user (All authenticated users can read their own chats)"""
+    """Get chat sessions for the current user in a specific project"""
+    # Check if user is a member of the project
+    if not current_user.is_project_member(project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
+        )
+    
     skip = (page - 1) * size
     
-    if project_id:
-        # Get sessions for user and project
-        sessions = chat_session_crud.get_by_user_and_project(
-            db=db, user_id=current_user.id, project_id=project_id, skip=skip, limit=size
-        )
-        # Get total count (simplified - in production, add a count method)
-        total_sessions = chat_session_crud.get_by_user_and_project(
-            db=db, user_id=current_user.id, project_id=project_id, skip=0, limit=1000
-        )
-        total = len(total_sessions)
-    else:
-        # Get all sessions for user
-        sessions = chat_session_crud.get_by_user(
-            db=db, user_id=current_user.id, skip=skip, limit=size
-        )
-        # Get total count (simplified)
-        total_sessions = chat_session_crud.get_by_user(
-            db=db, user_id=current_user.id, skip=0, limit=1000
-        )
-        total = len(total_sessions)
+    # Get sessions for user and project
+    sessions = chat_session_crud.get_by_user_and_project(
+        db=db, user_id=current_user.id, project_id=project_id, skip=skip, limit=size
+    )
+    # Get total count (simplified - in production, add a count method)
+    total_sessions = chat_session_crud.get_by_user_and_project(
+        db=db, user_id=current_user.id, project_id=project_id, skip=0, limit=1000
+    )
+    total = len(total_sessions)
     
     pages = math.ceil(total / size) if total > 0 else 1
     
@@ -136,7 +139,7 @@ def get_chat_sessions(
 def get_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """Get a specific chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -153,6 +156,13 @@ def get_chat_session(
             detail="Not authorized to access this chat session"
         )
     
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
+        )
+    
     return session
 
 @router.get("/sessions/{session_id}/messages", response_model=ChatSessionWithMessages)
@@ -160,7 +170,7 @@ def get_chat_session_messages(
     session_id: uuid.UUID,
     limit: int = Query(50, ge=1, le=200, description="Number of recent messages to include"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """Get a chat session with its messages"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -175,6 +185,13 @@ def get_chat_session_messages(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this chat session"
+        )
+    
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
         )
     
     # Get messages
@@ -194,7 +211,7 @@ def update_chat_message(
     sequence_num: int,
     content: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Update a specific chat message"""
     # Verify session exists and user owns it
@@ -208,7 +225,14 @@ def update_chat_message(
     if session.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update messages in this chat session"
+            detail="Not authorized to access this chat session"
+        )
+    
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
         )
     
     # Update the message
@@ -232,7 +256,7 @@ def delete_chat_message(
     session_id: uuid.UUID,
     sequence_num: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a specific chat message"""
     # Verify session exists and user owns it
@@ -247,6 +271,13 @@ def delete_chat_message(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete messages from this chat session"
+        )
+    
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
         )
     
     # Delete the message
@@ -269,7 +300,7 @@ def update_chat_session(
     session_id: uuid.UUID,
     session_update: ChatSessionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Update a chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -286,6 +317,13 @@ def update_chat_session(
             detail="Not authorized to update this chat session"
         )
     
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
+        )
+    
     # Update the session
     updated_session = chat_session_crud.update(
         db=db,
@@ -299,7 +337,7 @@ def update_chat_session(
 def delete_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_DELETE))
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a chat session"""
     session = chat_session_crud.get(db=db, chat_session_id=session_id)
@@ -314,6 +352,13 @@ def delete_chat_session(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this chat session"
+        )
+    
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
         )
     
     # Delete the session
@@ -478,7 +523,7 @@ async def send_streaming_message(
     session_id: uuid.UUID,
     message_input: StreamingMessageInput,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.CHAT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Send a message to a chat session and receive a streaming response"""
     # Verify session exists and user owns it
@@ -493,6 +538,13 @@ async def send_streaming_message(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to send messages to this chat session"
+        )
+    
+    # Check if user is a member of the project
+    if not current_user.is_project_member(session.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access chat sessions in this project"
         )
     
     # Create the user message
@@ -516,3 +568,4 @@ async def send_streaming_message(
             "X-Accel-Buffering": "no"  # Disable nginx buffering
         }
     )
+

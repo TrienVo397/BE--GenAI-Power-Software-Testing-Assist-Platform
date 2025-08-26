@@ -5,7 +5,15 @@ from app.models.user import User
 from app.models.admin import Admin
 from app.models.credential import Credential
 from app.models.admin_credential import AdminCredential
+from app.models.project import Project
+from app.models.project_member import ProjectMember, ProjectRole
 from app.core.security import hash_password
+from app.crud.project_crud import project_crud
+from app.crud.project_member_crud import project_member_crud
+from app.schemas.project import ProjectCreate
+from app.schemas.project_member import ProjectMemberCreate
+from datetime import datetime, timezone
+import uuid
 
 def create_initial_admins(session: Session):
     """Create initial admin users with admin credentials - all admins have full access"""
@@ -61,70 +69,106 @@ def create_initial_admins(session: Session):
     return first_admin, second_admin
 
 def create_initial_users(session: Session):
-    """Create initial regular users with their credentials"""
-    # Create manager user
-    manager_user = User(
-        username="manager",
-        email="manager@example.com",
-        full_name="Project Manager",
-        roles='["manager"]'
+    """Create initial regular users with their credentials - no global roles"""
+    # Create user1 - will be project manager
+    user1 = User(
+        username="user1",
+        email="user1@example.com",
+        full_name="User One"
     )
     
-    # Create tester user
-    tester_user = User(
-        username="tester",
-        email="tester@example.com", 
-        full_name="Test Engineer",
-        roles='["tester"]'
+    # Create user2 - will be project tester  
+    user2 = User(
+        username="user2",
+        email="user2@example.com", 
+        full_name="User Two"
     )
     
-    # Create viewer user
-    viewer_user = User(
-        username="viewer",
-        email="viewer@example.com",
-        full_name="Test Viewer",
-        roles='["viewer"]'
+    # Create user3 - will be project viewer
+    user3 = User(
+        username="user3",
+        email="user3@example.com",
+        full_name="User Three"
     )
     
     # Add users to session and flush to get IDs
-    session.add(manager_user)
-    session.add(tester_user)
-    session.add(viewer_user)
+    session.add(user1)
+    session.add(user2)
+    session.add(user3)
     session.flush()
     
     # Create credentials for each user
-    if manager_user.id is None:
-        raise ValueError("Manager user ID is None after flush")
+    if user1.id is None:
+        raise ValueError("User1 ID is None after flush")
     
-    if tester_user.id is None:
-        raise ValueError("Tester user ID is None after flush")
+    if user2.id is None:
+        raise ValueError("User2 ID is None after flush")
         
-    if viewer_user.id is None:
-        raise ValueError("Viewer user ID is None after flush")
+    if user3.id is None:
+        raise ValueError("User3 ID is None after flush")
         
-    manager_credential = Credential(
-        user_id=manager_user.id,
-        hashed_password=hash_password("manager123")
+    user1_credential = Credential(
+        user_id=user1.id,
+        hashed_password=hash_password("user123")
     )
     
-    tester_credential = Credential(
-        user_id=tester_user.id,
-        hashed_password=hash_password("tester123")
+    user2_credential = Credential(
+        user_id=user2.id,
+        hashed_password=hash_password("user123")
     )
     
-    viewer_credential = Credential(
-        user_id=viewer_user.id,
-        hashed_password=hash_password("viewer123")
+    user3_credential = Credential(
+        user_id=user3.id,
+        hashed_password=hash_password("user123")
     )
     
-    session.add(manager_credential)
-    session.add(tester_credential)
-    session.add(viewer_credential)
+    session.add(user1_credential)
+    session.add(user2_credential)
+    session.add(user3_credential)
     
     print("Created regular users:")
-    print("- manager@example.com (password: manager123) [MANAGER]")
-    print("- tester@example.com (password: tester123) [TESTER]")
-    print("- viewer@example.com (password: viewer123) [VIEWER]")
+    print("- user1@example.com (password: user123) [No global role - project-based only]")
+    print("- user2@example.com (password: user123) [No global role - project-based only]")
+    print("- user3@example.com (password: user123) [No global role - project-based only]")
+    
+    return user1, user2, user3
+
+def create_sample_project_with_memberships(session: Session, user1: User, user2: User, user3: User):
+    """Create a sample project with user1 as manager only"""
+    
+    # Create project by user1
+    project_create = ProjectCreate(
+        name="Sample Testing Project",
+        meta_data="This is a sample project for testing the GenAI platform",
+        note="Created during database seeding for demonstration purposes",
+        start_date=datetime.now(timezone.utc),
+        created_by=user1.id,
+        updated_by=user1.id
+    )
+    
+    # Create the project using CRUD
+    db_project = project_crud.create(db=session, project=project_create)
+    
+    # Add user1 as MANAGER (project creator)
+    manager_membership = ProjectMemberCreate(
+        user_id=user1.id,
+        role=ProjectRole.MANAGER,
+        is_active=True
+    )
+    project_member_crud.add_member(
+        db=session,
+        project_id=db_project.id,
+        member_data=manager_membership,
+        added_by=user1.id  # Self-assigned
+    )
+    
+    print(f"\nCreated sample project: '{db_project.name}' (ID: {db_project.id})")
+    print("Project memberships:")
+    print(f"- user1 ('{user1.email}') → MANAGER [Full project control]")
+    print(f"- user2 ('{user2.email}') → Not assigned to any project yet")
+    print(f"- user3 ('{user3.email}') → Not assigned to any project yet")
+    
+    return db_project
 
 def seed_database():
     """Seed the database with initial data"""
@@ -144,16 +188,29 @@ def seed_database():
         create_initial_admins(session)
         
         # Create regular users
-        create_initial_users(session)
+        user1, user2, user3 = create_initial_users(session)
+        
+        # Create sample project with memberships
+        sample_project = create_sample_project_with_memberships(session, user1, user2, user3)
         
         # Commit all changes
         session.commit()
         
-        print("Database seeding completed!")
-        print("\nAdmin Authentication: Use /api/v1/admin/login")
-        print("User Authentication: Use /api/v1/users/login")
-        print("Note: All authenticated admins have full access to all admin APIs")
-        print("Note: Only admins can create new users via /api/v1/admin/users/create")
+        print("\nDatabase seeding completed!")
+        print("\nAuthentication endpoints:")
+        print("- Admin: Use /api/v1/admin/login")
+        print("- User: Use /api/v1/users/login")
+        
+        print("\nSystem overview:")
+        print("- All authenticated admins have full access to admin APIs")
+        print("- Only admins can create new users via /api/v1/admin/users/create")
+        print("- Users have no global roles - all permissions are project-based")
+        print("- Project roles: MANAGER (full control), TESTER (content modification), VIEWER (read-only)")
+        
+        print(f"\nSample project created: '{sample_project.name}'")
+        print("- Only user1 is assigned as MANAGER to the project")
+        print("- user2 and user3 are available for project assignment by managers")
+        print("- Test adding members via project management APIs")
 
 if __name__ == "__main__":
     seed_database()

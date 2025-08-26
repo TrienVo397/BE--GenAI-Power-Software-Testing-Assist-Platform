@@ -1,19 +1,11 @@
 # filepath: app/core/permissions.py
 from enum import Enum
-from typing import Dict, List, Set
-from ..models.user import UserRole
+from typing import Dict, Set, Optional
+from ..models.project_member import ProjectRole
 
 class Permission(str, Enum):
-    """Regular user permissions for application features (separated from admin permissions)"""
-    # User Management (limited to managers)
-    USER_CREATE = "user:create"
-    USER_READ = "user:read"
-    USER_UPDATE = "user:update" 
-    USER_DELETE = "user:delete"
-    USER_ROLE_UPDATE = "user:role_update"
-    
+    """User permissions for application features - project-specific permissions only"""
     # Project Management
-    PROJECT_CREATE = "project:create"
     PROJECT_READ = "project:read"
     PROJECT_UPDATE = "project:update"
     PROJECT_DELETE = "project:delete"
@@ -47,15 +39,11 @@ class Permission(str, Enum):
     CHAT_READ = "chat:read"
     CHAT_DELETE = "chat:delete"
 
-# Regular user role-permission mapping (non-admin users)
-ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
-    UserRole.MANAGER: {
-        # User management capabilities (limited to managers)
-        Permission.USER_CREATE, Permission.USER_READ, Permission.USER_UPDATE, 
-        Permission.USER_DELETE, Permission.USER_ROLE_UPDATE,
+# Project role-permission mapping
+PROJECT_ROLE_PERMISSIONS: Dict[ProjectRole, Set[Permission]] = {
+    ProjectRole.MANAGER: {
         # Full project management capabilities
-        Permission.PROJECT_CREATE, Permission.PROJECT_READ, Permission.PROJECT_UPDATE, 
-        Permission.PROJECT_DELETE,
+        Permission.PROJECT_READ, Permission.PROJECT_UPDATE, Permission.PROJECT_DELETE,
         Permission.DOCUMENT_CREATE, Permission.DOCUMENT_READ, Permission.DOCUMENT_UPDATE, 
         Permission.DOCUMENT_DELETE,
         Permission.ARTIFACT_CREATE, Permission.ARTIFACT_READ, Permission.ARTIFACT_UPDATE, 
@@ -66,11 +54,9 @@ ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
         Permission.AI_RTM_GENERATE, Permission.AI_CHAT, Permission.AI_ANALYZE,
         Permission.CHAT_CREATE, Permission.CHAT_READ, Permission.CHAT_DELETE
     },
-    UserRole.TESTER: {
-        # Basic user view capability for testers
-        Permission.USER_READ,
+    ProjectRole.TESTER: {
         # Testing operations with some project management
-        Permission.PROJECT_CREATE, Permission.PROJECT_READ, Permission.PROJECT_UPDATE,
+        Permission.PROJECT_READ, Permission.PROJECT_UPDATE,
         Permission.DOCUMENT_CREATE, Permission.DOCUMENT_READ, Permission.DOCUMENT_UPDATE,
         Permission.ARTIFACT_CREATE, Permission.ARTIFACT_READ, Permission.ARTIFACT_UPDATE,
         # File operations except delete
@@ -79,9 +65,7 @@ ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
         Permission.AI_RTM_GENERATE, Permission.AI_CHAT,
         Permission.CHAT_CREATE, Permission.CHAT_READ, Permission.CHAT_DELETE
     },
-    UserRole.VIEWER: {
-        # Basic user view capability for viewers
-        Permission.USER_READ,
+    ProjectRole.VIEWER: {
         # Read-only access
         Permission.PROJECT_READ,
         Permission.DOCUMENT_READ,
@@ -92,39 +76,35 @@ ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
     }
 }
 
-def has_permission(user_roles: List[UserRole], permission: Permission) -> bool:
+def has_project_permission(project_role: Optional[ProjectRole], permission: Permission) -> bool:
     """
-    Check if user with given roles has the specified permission
+    Check if user with given project role has the specified permission
     
     Args:
-        user_roles: List of user roles
+        project_role: Project role of the user (None if not a project member)
         permission: Permission to check
         
     Returns:
         True if user has permission, False otherwise
     """
-    for role in user_roles:
-        if role in ROLE_PERMISSIONS:
-            if permission in ROLE_PERMISSIONS[role]:
-                return True
-    return False
+    if not project_role or project_role not in PROJECT_ROLE_PERMISSIONS:
+        return False
+    return permission in PROJECT_ROLE_PERMISSIONS[project_role]
 
-def get_user_permissions(user_roles: List[UserRole]) -> Set[Permission]:
+def get_project_permissions(project_role: Optional[ProjectRole]) -> Set[Permission]:
     """
-    Get all permissions for a user based on their roles
+    Get all permissions for a user based on their project role
     
     Args:
-        user_roles: List of user roles
+        project_role: Project role of the user
         
     Returns:
-        Set of all permissions for the user
+        Set of all permissions for the user in this project
     """
-    permissions = set()
-    for role in user_roles:
-        if role in ROLE_PERMISSIONS:
-            permissions.update(ROLE_PERMISSIONS[role])
-    return permissions
+    if not project_role or project_role not in PROJECT_ROLE_PERMISSIONS:
+        return set()
+    return PROJECT_ROLE_PERMISSIONS[project_role].copy()
 
-def can_access_ai_rtm(user_roles: List[UserRole]) -> bool:
-    """Check if user can access AI RTM generation"""
-    return has_permission(user_roles, Permission.AI_RTM_GENERATE)
+def can_access_ai_rtm(project_role: Optional[ProjectRole]) -> bool:
+    """Check if user can access AI RTM generation in this project"""
+    return has_project_permission(project_role, Permission.AI_RTM_GENERATE)

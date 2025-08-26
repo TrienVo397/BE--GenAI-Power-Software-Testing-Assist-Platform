@@ -4,8 +4,9 @@ from typing import Optional, List
 from fastapi import HTTPException, status, Depends
 from sqlmodel import Session
 from .database import get_db
-from .permissions import Permission, has_permission
-from ..models.user import User, UserRole
+from .permissions import Permission, has_project_permission, PROJECT_ROLE_PERMISSIONS
+from ..models.user import User
+from ..models.project_member import ProjectRole
 from ..crud.user_crud import user_crud
 import logging
 import uuid
@@ -44,13 +45,14 @@ async def get_current_user(
         detail="Invalid authentication"
     )
 
-def require_permission(permission: Permission):
-    """Decorator to require specific permission for endpoint access"""
+def require_project_permission(permission: Permission):
+    """Decorator to require specific permission within a project context"""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract current user from kwargs or dependencies
+            # Extract current user and project_id from kwargs
             current_user: Optional[User] = kwargs.get('current_user')
+            project_id = kwargs.get('project_id')
             
             if not current_user:
                 logger.warning(f"Unauthorized access attempt to {func.__name__}")
@@ -66,10 +68,11 @@ def require_permission(permission: Permission):
                     detail="Account is inactive"
                 )
             
-            user_roles = current_user.get_roles()
-            if not has_permission(user_roles, permission):
+            # Get user's role in this specific project
+            project_role = current_user.get_project_role(project_id)
+            if not has_project_permission(project_role, permission):
                 logger.warning(
-                    f"User {current_user.username} with roles {[r.value for r in user_roles]} "
+                    f"User {current_user.username} with project role {project_role} "
                     f"denied access to {func.__name__} (requires {permission.value})"
                 )
                 raise HTTPException(
@@ -83,12 +86,13 @@ def require_permission(permission: Permission):
         return wrapper
     return decorator
 
-def require_roles(roles: List[UserRole]):
-    """Decorator to require specific roles for endpoint access"""
+def require_project_roles(roles: List[ProjectRole]):
+    """Decorator to require specific project roles for endpoint access"""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             current_user: Optional[User] = kwargs.get('current_user')
+            project_id = kwargs.get('project_id')
             
             if not current_user:
                 raise HTTPException(
@@ -96,10 +100,11 @@ def require_roles(roles: List[UserRole]):
                     detail="Authentication required"
                 )
             
-            if not current_user.has_any_role(roles):
+            project_role = current_user.get_project_role(project_id)
+            if not project_role or project_role not in roles:
                 logger.warning(
                     f"User {current_user.username} denied access to {func.__name__} "
-                    f"(requires one of: {[r.value for r in roles]})"
+                    f"(requires one of: {[r.value for r in roles]}, has: {project_role})"
                 )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

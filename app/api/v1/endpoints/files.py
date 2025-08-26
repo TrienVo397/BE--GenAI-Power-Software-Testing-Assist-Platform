@@ -17,7 +17,7 @@ from app.utils.project_fs import (
 )
 from app.core.security import get_current_user
 from app.core.permissions import Permission
-from app.core.authz import require_permissions
+# from app.core.authz import require_permissions  # DEPRECATED
 from app.models.user import User
 from app.schemas.file import TextContentUpdate, FileInfo, FileResponse, DirectoryResponse, TextFileContent, FileListResponse
 
@@ -31,7 +31,7 @@ async def list_files(
     directory: Optional[str] = Query(None, description="Optional subdirectory path"),
     recursive: bool = Query(True, description="Whether to include subdirectories recursively"),
     include_hidden: bool = Query(False, description="Whether to include hidden files/directories (starting with '.')"),
-    current_user: User = Depends(require_permissions(Permission.FILE_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """
     List all files and directories in a project or specific directory
@@ -39,6 +39,13 @@ async def list_files(
     - Set recursive=true to list all files and subdirectories recursively (default)
     - Set include_hidden=true to include files/directories that start with a dot (like .git)
     """
+    # Check if user is a member of the project
+    if not current_user.is_project_member(project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a project member to view project files"
+        )
+        
     try:
         return list_project_files(str(project_id), directory, recursive=recursive, include_hidden=include_hidden)
     except ProjectFSError as e:
@@ -66,7 +73,7 @@ async def get_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file within project directory"),
     as_json: bool = Query(False, description="If true and file is text, returns content as JSON instead of raw file"),
-    current_user: User = Depends(require_permissions(Permission.FILE_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get the contents of a file from the project directory
@@ -146,7 +153,7 @@ async def upload_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path where to save the file"),
     file: UploadFile = File(..., description="File to upload"),
-    current_user: User = Depends(require_permissions(Permission.FILE_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload a file to the project directory
@@ -154,6 +161,13 @@ async def upload_file(
     Note: For updating existing files, consider using the PUT endpoint which supports
     both file uploads and text content updates.
     """
+    # Check if user can modify project content (Manager/Tester)
+    if not current_user.can_modify_project_content(project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project managers and testers can upload files"
+        )
+        
     try:
         # Read the file content
         file_content = await file.read()
@@ -174,7 +188,7 @@ async def upload_file(
 async def delete_file(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file or directory to delete"),
-    current_user: User = Depends(require_permissions(Permission.FILE_DELETE))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete a file or directory from the project
@@ -192,7 +206,7 @@ async def delete_file(
 async def create_directory(
     project_id: UUID = Path(..., description="The project ID"),
     directory_path: str = Path(..., description="Path for the new directory"),
-    current_user: User = Depends(require_permissions(Permission.DIRECTORY_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Create a new directory in the project
@@ -209,7 +223,7 @@ async def create_directory(
 async def get_file_info(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to file within project directory"),
-    current_user: User = Depends(require_permissions(Permission.FILE_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get information about a file or directory without downloading its contents
@@ -286,7 +300,7 @@ async def update_file_text(
     text_update: TextContentUpdate,
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to the file within project directory"),
-    current_user: User = Depends(require_permissions(Permission.FILE_UPDATE))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update a text file with JSON content
@@ -340,7 +354,7 @@ async def update_file_upload(
     project_id: UUID = Path(..., description="The project ID"),
     file_path: str = Path(..., description="Path to the file within project directory"),
     file: UploadFile = File(..., description="File to upload"),
-    current_user: User = Depends(require_permissions(Permission.FILE_UPDATE))
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update a file by uploading a new version

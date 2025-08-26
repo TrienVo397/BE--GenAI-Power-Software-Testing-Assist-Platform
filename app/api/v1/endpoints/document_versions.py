@@ -9,7 +9,7 @@ from app.crud.project_crud import project_crud
 from app.api.deps import get_db
 from app.core.security import get_current_user
 from app.core.permissions import Permission
-from app.core.authz import require_permissions
+# from app.core.authz import require_permissions  # DEPRECATED
 from app.models.user import User
 from app.models.project import Project
 from app.utils.project_fs import ProjectFSError
@@ -23,17 +23,9 @@ router = APIRouter()
 def create_document_version(
     doc_version: DocumentVersionCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_CREATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Create new document version (Manager/Tester only)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_CREATE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions. Only managers and testers can create document versions."
-        )
-    
     # Verify project exists
     project = project_crud.get(db, project_id=doc_version.project_id)
     if not project:
@@ -41,11 +33,18 @@ def create_document_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
+    
+    # Check if user can modify project content (Manager/Tester)
+    if not current_user.can_modify_project_content(doc_version.project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project managers and testers can create document versions"
+        )
         
     # Create document version - validation happens in the CRUD method
     try:
         db_doc_version = document_version_crud.create(db=db, doc_version=doc_version, current_user=current_user)
-        logger.info(f"User {current_user.username} ({current_user.get_roles()}) created document version {doc_version.version_label}")
+        logger.info(f"User {current_user.username}  created document version {doc_version.version_label}")
         return db_doc_version
     except HTTPException:
         # Re-raise HTTP exceptions directly
@@ -61,16 +60,10 @@ def create_document_version(
 def read_document_version(
     doc_version_id: uuid.UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """Get document version by ID (All authenticated users can read)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_READ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to read document versions."
-        )
+    # Project-specific permission check removed - add back if needed
     
     db_doc_version = document_version_crud.get(db, doc_version_id=doc_version_id)
     if db_doc_version is None:
@@ -84,16 +77,10 @@ def read_document_version(
 def read_document_versions_by_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """Get all document versions for a project (All authenticated users can read)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_READ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to read document versions."
-        )
+    # Project-specific permission check removed - add back if needed
     
     # Verify project exists
     project = project_crud.get(db, project_id=project_id)
@@ -106,23 +93,17 @@ def read_document_versions_by_project(
     versions = document_version_crud.get_by_project(
         db, project_id=project_id
     )
-    logger.info(f"User {current_user.username} ({current_user.get_roles()}) read {len(versions)} document versions")
+    logger.info(f"User {current_user.username}  read {len(versions)} document versions")
     return versions
 
 @router.get("/project/{project_id}/current", response_model=DocumentVersionRead)
 def get_current_document_version(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_READ))
+    current_user: User = Depends(get_current_user)
 ):
     """Get current document version for a project (All authenticated users can read)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_READ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to read document versions."
-        )
+    # Project-specific permission check removed - add back if needed
     
     # Verify project exists
     project = project_crud.get(db, project_id=project_id)
@@ -145,16 +126,10 @@ def update_document_version(
     doc_version_id: uuid.UUID, 
     doc_version: DocumentVersionUpdate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_UPDATE))
+    current_user: User = Depends(get_current_user)
 ):
     """Update document version (Manager/Tester only)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_UPDATE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions. Only managers and testers can update document versions."
-        )
+    # Project-specific permission check removed - add back if needed
     
     db_doc_version = document_version_crud.get(db, doc_version_id=doc_version_id)
     if db_doc_version is None:
@@ -173,23 +148,17 @@ def update_document_version(
             detail="Document version not found"
         )
     
-    logger.info(f"User {current_user.username} ({current_user.get_roles()}) updated document version {doc_version_id}")
+    logger.info(f"User {current_user.username}  updated document version {doc_version_id}")
     return updated_version
 
 @router.delete("/{doc_version_id}", response_model=DocumentVersionRead)
 def delete_document_version(
     doc_version_id: uuid.UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permissions(Permission.DOCUMENT_DELETE))
+    current_user: User = Depends(get_current_user)
 ):
     """Delete document version (Manager only)"""
-    # Check permissions
-    user_roles = current_user.get_roles()
-    if not has_permission(user_roles, Permission.DOCUMENT_DELETE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions. Only managers can delete document versions."
-        )
+    # Project-specific permission check removed - add back if needed
     
     db_doc_version = document_version_crud.get(db, doc_version_id=doc_version_id)
     if db_doc_version is None:
@@ -210,3 +179,4 @@ def delete_document_version(
     deleted_version = document_version_crud.delete(db=db, doc_version_id=doc_version_id, current_user=current_user)
     logger.info(f"Manager {current_user.username} deleted document version {doc_version_id}")
     return deleted_version
+

@@ -7,13 +7,13 @@ import uuid
 
 from app.schemas.user import (
     UserCreate, UserRead, UserUpdate, Token, UserRegister,
-    AdminUserCreate, AdminUserUpdate, UserRoleUpdate
+    AdminUserCreate, AdminUserUpdate
 )
 from app.crud.user_crud import user_crud
 from app.api.deps import get_db
 from app.core.security import verify_password, create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from app.models.user import User, UserRole
-from app.core.authz import require_permissions
+from app.models.user import User
+# from app.core.authz import AuthorizationDependency  # DEPRECATED
 from app.core.permissions import Permission
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel, SecuritySchemeType
 import logging
@@ -79,7 +79,7 @@ async def whoami(current_user: User = Depends(get_current_user)):
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(require_permissions(Permission.USER_READ)),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get list of users (requires user management permission)"""
@@ -102,31 +102,16 @@ async def get_user_by_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get specific user by ID (requires user view permission or self)"""
-    # Users can always view their own profile
-    if user_id == current_user.id:
-        logger.info(f"User {current_user.username} retrieving own profile by ID")
-        return current_user
-    
-    # For viewing other users, check permissions using the decorator's logic
-    from app.core.permissions import has_permission
-    user_roles = current_user.get_roles()
-    
-    if not has_permission(user_roles, Permission.USER_READ):
+    """Get specific user by ID (users can only view their own profile)"""
+    # Users can only view their own profile (admin can view others via admin API)
+    if user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to view other users"
+            detail="You can only view your own profile"
         )
     
-    user = user_crud.get(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    logger.info(f"User {current_user.username} retrieving user {user.username}")
-    return user
+    logger.info(f"User {current_user.username} retrieving own profile by ID")
+    return current_user
 
 @router.put("/me/profile", response_model=UserRead)
 async def update_my_profile(
@@ -161,7 +146,7 @@ async def update_my_profile(
 @router.post("/create", response_model=UserRead)
 async def create_user(
     user_data: UserCreate,
-    current_user: User = Depends(require_permissions(Permission.USER_CREATE)),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new user (Manager only)"""
@@ -221,98 +206,10 @@ async def update_user(
         logger.info(f"User {current_user.username} updated own profile")
         return updated_user
     
-    # For updating other users, check permissions  
-    from app.core.permissions import has_permission
-    user_roles = current_user.get_roles()
-    
-    if not has_permission(user_roles, Permission.USER_UPDATE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions. Only managers can update other users."
-        )
-    
-    target_user = user_crud.get(db, user_id)
-    if not target_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    updated_user = user_crud.update(db, user_data, user_id)
-    if not updated_user:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user"
-        )
-    
-    logger.info(f"Manager {current_user.username} updated user {updated_user.username}")
-    return updated_user
+    # Users can only update their own profile (admin can update others via admin API)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You can only update your own profile"
+    )
 
-@router.put("/{user_id}/roles", response_model=UserRead)
-async def update_user_roles(
-    user_id: uuid.UUID,
-    role_data: UserRoleUpdate,
-    current_user: User = Depends(require_permissions(Permission.USER_ROLE_UPDATE)),
-    db: Session = Depends(get_db)
-):
-    """Update user roles (Manager only)"""
-    target_user = user_crud.get(db, user_id)
-    if not target_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    # Validate roles
-    try:
-        valid_roles = [UserRole(role) for role in role_data.roles if role in [r.value for r in UserRole]]
-        if not valid_roles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No valid roles provided"
-            )
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role provided"
-        )
-    
-    # Update user roles
-    import json
-    target_user.roles = json.dumps([role.value for role in valid_roles])
-    
-    user_update = UserUpdate(roles=target_user.roles)
-    updated_user = user_crud.update(db, user_update, user_id)
-    
-    if not updated_user:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user roles"
-        )
-    
-    logger.info(f"Manager {current_user.username} updated roles for user {updated_user.username}")
-    return updated_user
 
-@router.delete("/{user_id}", response_model=UserRead)
-async def delete_user(
-    user_id: uuid.UUID,
-    current_user: User = Depends(require_permissions(Permission.USER_DELETE)),
-    db: Session = Depends(get_db)
-):
-    """Delete user (Manager only)"""
-    # Prevent self-deletion
-    if user_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
-        )
-    
-    deleted_user = user_crud.delete(db, user_id)
-    if not deleted_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    logger.info(f"Manager {current_user.username} deleted user {deleted_user.username}")
-    return deleted_user

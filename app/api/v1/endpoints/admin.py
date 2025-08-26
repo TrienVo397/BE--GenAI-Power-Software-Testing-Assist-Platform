@@ -314,22 +314,6 @@ async def admin_create_user(
             detail="Failed to create user"
         )
     
-    # Set initial roles if specified
-    if user_data.initial_roles:
-        from app.models.user import UserRole
-        for role_str in user_data.initial_roles:
-            try:
-                role = UserRole(role_str)
-                new_user.add_role(role)
-            except ValueError:
-                logger.warning(f"Invalid role '{role_str}' specified for user {new_user.username}")
-        
-        # Update the user with new roles
-        user_update = UserUpdate(roles=new_user.roles)
-        updated_user = user_crud.update(db, user_update, new_user.id)
-        if updated_user:
-            new_user = updated_user
-    
     logger.info(f"Admin {current_admin.admin_username} created user {new_user.username}")
     return new_user
 
@@ -359,23 +343,6 @@ async def admin_update_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user"
         )
-    
-    # Handle role updates separately if provided
-    if user_data.roles is not None:
-        from app.models.user import UserRole
-        updated_user.roles = '[]'  # Clear all roles
-        for role_str in user_data.roles:
-            try:
-                role = UserRole(role_str)
-                updated_user.add_role(role)
-            except ValueError:
-                logger.warning(f"Invalid role '{role_str}' specified for user {updated_user.username}")
-        
-        # Save role changes
-        role_update = UserUpdate(roles=updated_user.roles)
-        role_updated_user = user_crud.update(db, role_update, user_id)
-        if role_updated_user:
-            updated_user = role_updated_user
     
     logger.info(f"Admin {current_admin.admin_username} updated user {updated_user.username}")
     return updated_user

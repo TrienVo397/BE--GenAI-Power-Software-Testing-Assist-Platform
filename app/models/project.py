@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .project_artifact import ProjectArtifact
     from .user import User
     from .chat import ChatSession
+    from .project_member import ProjectMember
 
 class Project(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -55,4 +56,10 @@ class Project(SQLModel, table=True):
     updater: Optional["User"] = Relationship(
         back_populates="updated_projects", 
         sa_relationship_kwargs={"foreign_keys": "[Project.updated_by]"}
+    )
+    
+    # Project membership - users assigned to this project with specific roles
+    members: List["ProjectMember"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"foreign_keys": "[ProjectMember.project_id]"}
     )
