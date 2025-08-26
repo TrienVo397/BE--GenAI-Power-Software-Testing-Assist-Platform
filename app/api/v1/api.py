@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import users, projects, document_versions, project_artifacts, files, chat, admin, project_members
+from app.api.v1.endpoints import users, projects, document_versions, project_artifacts, files, chat, admin, project_members, bot
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(document_versions.router, prefix="/document-versions",
 api_router.include_router(project_artifacts.router, prefix="/project-artifacts", tags=["project_artifacts"])
 api_router.include_router(files.router, prefix="/projects", tags=["files"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
+api_router.include_router(bot.router, prefix="/bot", tags=["bot"])

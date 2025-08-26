@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
-from langchain_deepseek import ChatDeepSeek
 from langgraph.prebuilt import ToolNode, InjectedState, tools_condition
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
@@ -20,7 +19,7 @@ from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
-
+load_dotenv()
 # Load main system prompt
 def load_main_system_prompt() -> str:
     """Load the main system prompt from file"""
@@ -238,12 +237,10 @@ def generate_rtm_fromRequirements_tool(
         if root not in sys.path: sys.path.append(root)
 
         from ai.mcp.gen_rtm import generate_rtm_from_requirements
-        out_path = generate_rtm_from_requirements(req, ctx, prompt_path, rtm_path)
-
-        with open(out_path, 'r', encoding='utf-8') as f: rtm = f.read()
+        rtm_content = generate_rtm_from_requirements(req, ctx, prompt_path, rtm_path)
 
         return Command(update={
-            "messages": [ToolMessage(f"RTM generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
+            "messages": [ToolMessage(f"RTM generated successfully. Saved to {os.path.basename(rtm_path)}", tool_call_id=tool_call_id)]
         })
 
     except Exception as e:
@@ -292,14 +289,25 @@ def get_requirement_info_by_lookup_tool(
     table = table_match.group(0).strip().split('\n')
     headers = [h.strip() for h in table[0].split('|')[1:-1]]
     results = []
+    
+    # Find the target column index
+    target_col_index = None
+    for i, header in enumerate(headers):
+        if header.lower() == target_key.lower():
+            target_col_index = i
+            break
+    
+    if target_col_index is None:
+        return Command(update={"messages": [ToolMessage(f"Column '{target_key}' not found in requirements table.", tool_call_id=tool_call_id)]})
+    
     for row in table[2:]:  # skip header and separator
         cols = [c.strip() for c in row.split('|')[1:-1]]
         if len(cols) == len(headers):
-            req_dict = dict(zip(headers, cols))
-            for k, v in req_dict.items():
-                if k.lower() == target_key.lower() and str(v).lower() == str(target_value).lower():
-                    results.append(req_dict)
-                    break
+            # Check only the target column for the match
+            if target_col_index < len(cols) and str(cols[target_col_index]).lower() == str(target_value).lower():
+                req_dict = dict(zip(headers, cols))
+                results.append(req_dict)
+    
     return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
 # ...existing code...
@@ -417,12 +425,13 @@ def change_requirement_info_tool(
 #     max_retries=settings.llm.max_retries,
 #     api_key=settings.llm.api_key,
 # )
+google_llm_api_key = os.getenv("GOOGLE_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=0.3,
     max_tokens = None,
-    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
+    api_key = google_llm_api_key,
 )
 
 # Create a separate non-streaming LLM for regular calls

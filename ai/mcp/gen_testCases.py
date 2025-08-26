@@ -19,7 +19,7 @@ llm = ChatAnthropic(
     model="claude-3-7-sonnet-latest",
     temperature = 0.3,
     max_tokens = api_max_tokens,
-    api_key = llm_api_key
+    api_key = llm_api_key,
 )
 
 def generate_test_cases_from_rtm(rtm_content: str, 
