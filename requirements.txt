@@ -15,6 +15,7 @@ click
 aiohttp
 sse-starlette
 jinja2
+tiktoken
 deepseek
 langchain
 langchain-core
