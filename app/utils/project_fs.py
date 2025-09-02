@@ -23,19 +23,19 @@ def create_project_directory_structure(project_id):
     ├── .git/                # Git repository
     ├── templates/           # Version-controlled templates
     │   ├── checklist.yml    # YAML template
-    │   ├── testcase.yml
+    │   ├── test_cases.yml
     │   ├── requirement.yml
     │   └── coverage.yml
     ├── prompts/             # AI prompt templates (copied from default/prompts)
     │   └── (all files from default/prompts)
     ├── artifacts/           # Current outputs
     │   ├── checklist.md
-    │   ├── testcase.md
+    │   ├── test_cases.md
     │   ├── requirement.md
     │   └── coverage.md
     ├── context/             # Context files for each artifact
     │   ├── checklist_context.md
-    │   ├── testcase_context.md
+    │   ├── test_cases_context.md
     │   ├── requirement_context.md
     │   └── coverage_context.md
     └── versions/            # Versioned documents
@@ -84,15 +84,15 @@ def create_project_directory_structure(project_id):
         with open(project_dir / "templates" / "checklist.yml", "w") as f:
             f.write("# Checklist template\n")
     
-    # Copy testcase template
-    if (default_templates_dir / "testcase.yml").exists():
+    # Copy test_cases template
+    if (default_templates_dir / "test_cases.yml").exists():
         shutil.copy2(
-            default_templates_dir / "testcase.yml", 
-            project_dir / "templates" / "testcase.yml"
+            default_templates_dir / "test_cases.yml", 
+            project_dir / "templates" / "test_cases.yml"
         )
     else:
         # Create empty template if default doesn't exist
-        with open(project_dir / "templates" / "testcase.yml", "w") as f:
+        with open(project_dir / "templates" / "test_cases.yml", "w") as f:
             f.write("# Test case template\n")
     
     # Copy requirement template
@@ -142,7 +142,7 @@ def create_project_directory_structure(project_id):
     with open(project_dir / "artifacts" / "checklist.md", "w") as f:
         f.write("# Generated Checklist\n")
     
-    with open(project_dir / "artifacts" / "testcase.md", "w") as f:
+    with open(project_dir / "artifacts" / "test_cases.md", "w") as f:
         f.write("# Generated Test Cases\n")
     
     with open(project_dir / "artifacts" / "requirement.md", "w") as f:
@@ -155,7 +155,7 @@ def create_project_directory_structure(project_id):
     with open(project_dir / "context" / "checklist_context.md", "w") as f:
         f.write("# Checklist Context\n\nThis file contains the context and background information used to generate the checklist artifact.\n")
     
-    with open(project_dir / "context" / "testcase_context.md", "w") as f:
+    with open(project_dir / "context" / "test_cases_context.md", "w") as f:
         f.write("# Test Case Context\n\nThis file contains the context and background information used to generate the test case artifact.\n")
     
     with open(project_dir / "context" / "requirement_context.md", "w") as f:

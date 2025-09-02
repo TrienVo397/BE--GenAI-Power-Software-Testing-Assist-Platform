@@ -16,6 +16,8 @@ from app.utils.project_fs import (
     resolve_project_path
 )
 from app.core.security import get_current_user
+from app.core.permissions import Permission
+# from app.core.authz import require_permissions  # DEPRECATED
 from app.models.user import User
 from app.schemas.file import TextContentUpdate, FileInfo, FileResponse, DirectoryResponse, TextFileContent, FileListResponse
 
@@ -37,6 +39,13 @@ async def list_files(
     - Set recursive=true to list all files and subdirectories recursively (default)
     - Set include_hidden=true to include files/directories that start with a dot (like .git)
     """
+    # Check if user is a member of the project
+    if not current_user.is_project_member(project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a project member to view project files"
+        )
+        
     try:
         return list_project_files(str(project_id), directory, recursive=recursive, include_hidden=include_hidden)
     except ProjectFSError as e:
@@ -152,6 +161,13 @@ async def upload_file(
     Note: For updating existing files, consider using the PUT endpoint which supports
     both file uploads and text content updates.
     """
+    # Check if user can modify project content (Manager/Tester)
+    if not current_user.can_modify_project_content(project_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project managers and testers can upload files"
+        )
+        
     try:
         # Read the file content
         file_content = await file.read()

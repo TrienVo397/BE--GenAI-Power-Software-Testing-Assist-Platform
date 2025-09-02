@@ -56,6 +56,21 @@ class CRUDProject:
         statement = select(Project).where(Project.created_by == user_id).offset(skip).limit(limit)
         projects = db.exec(statement).all()
         return list(projects)
+    
+    def get_by_user_membership(self, db: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[Project]:
+        """Get all projects where user is a member (has any role) with pagination"""
+        from app.models.project_member import ProjectMember
+        
+        statement = (
+            select(Project)
+            .join(ProjectMember)
+            .where(ProjectMember.user_id == user_id)
+            .where(ProjectMember.is_active == True)
+            .offset(skip)
+            .limit(limit)
+        )
+        projects = db.exec(statement).all()
+        return list(projects)
 
     def update(self, db: Session, project: ProjectUpdate, project_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> Optional[Project]:
         statement = select(Project).where(Project.id == project_id)

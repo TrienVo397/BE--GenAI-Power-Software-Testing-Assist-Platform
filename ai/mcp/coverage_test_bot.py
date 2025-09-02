@@ -256,6 +256,7 @@ def run_coverage_test(project_id: str) -> Dict[str, Any]:
     final_state = graph.invoke({"project_id": project_id})
     return final_state["report_content"]
 
+<<<<<<< HEAD
 # def main(): 
 #     parser = argparse.ArgumentParser() 
 #     parser.add_argument("--project_id", required=True, help="Your project identifier") 
@@ -290,3 +291,8 @@ def run_coverage_test(project_id: str) -> Dict[str, Any]:
 
 result321 = run_coverage_test("6387040c-ca5f-440e-b1b0-94c546cda727")
 print(result321)
+=======
+# Example usage
+# result321 = run_coverage_test("6387040c-ca5f-440e-b1b0-94c546cda727")
+# print(result321)
+>>>>>>> origin

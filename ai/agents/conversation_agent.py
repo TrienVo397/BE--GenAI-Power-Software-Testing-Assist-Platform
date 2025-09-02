@@ -47,36 +47,97 @@ def generate_requirements_from_document_pdf_tool(
     Extracts requirements from a project SRS PDF document and generates Markdown files.
 
     **Behavior:**
+    - Constructs the path to the PDF file using: data/project-{project_id}/versions/{current_version}/srs.pdf
+    - Validates that the PDF file exists at the constructed path
     - Uses AI to analyze the PDF document and extract comprehensive requirements
     - Generates a structured requirements document in Markdown format
 
     **Outputs:**
+    - Updates `state["context"]` with the extracted summary content
+    - Updates `state["requirements"]` with the generated Markdown requirements document
+    - Updates `state["requirements_file_path"]` with the path to the generated requirement.md file
+    - Updates `state["context_file_path"]` with the path to the generated context file
     - Adds a success tool message in `state["messages"]`
-    - A new requirement.md in project's artifacts/ folder
-    - A new requirement_context.md in project's context/ folder
 
     **User Interaction:**
     - Don't mention the internal file paths. Always refer to the document by its filename and version only.
-
-    **Note**
-    - The file will be name "SRS.pdf" do not mention about it, if no "SRS.pdf" file found, use the file name that most sensible.
+    - The tool automatically handles all file management and path construction.
     """
-    import os, sys, glob
-
-    logger.info("Starting requirements extraction from document...")
+    import glob
+    import sys
+    import os
+    from datetime import datetime
     
-    project_id = state.get("project_id")
-    version = state.get("current_version")
-    if not project_id or not version:
-        msg = "Missing project ID" if not project_id else "Missing version"
-        return Command(update={"messages": [ToolMessage(f"Error: {msg}.", tool_call_id=tool_call_id)]})
-
-    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    if root not in sys.path: sys.path.append(root)
+    logger.debug("Starting generate_requirements_from_document_pdf_tool")
+    # Add the project root to the path to ensure imports work
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if project_root not in sys.path:
+        sys.path.append(project_root)
+    
     try:
         from ai.mcp.gen_requirements import generate_requirements_from_doc
     except ImportError:
         return Command(update={"messages": [ToolMessage("Error: Requirements module not available.", tool_call_id=tool_call_id)]})
+
+    base = f"data/project-{project_id}"
+    doc_path = f"{base}/versions/{version}/srs.pdf"
+    if not os.path.exists(doc_path):
+        pdfs = glob.glob(f"{base}/versions/{version}/*.pdf")
+        if not pdfs:
+            return Command(update={"messages": [ToolMessage(f"Error: No PDF found in version {version}.", tool_call_id=tool_call_id)]})
+        doc_path = pdfs[0]
+
+    prompts = {
+        "init_1": "data/default/prompts/gen_requirements/initial_prompt_1.txt",
+        "init_2": "data/default/prompts/gen_requirements/initial_prompt_2.txt",
+        "reflection": "data/default/prompts/gen_requirements/reflection_and_rewrite_prompt.txt",
+        "summary": "data/default/prompts/gen_requirements/context_summary.txt"
+    }
+    missing = [name for name, path in prompts.items() if not os.path.exists(path)]
+    if missing:
+        return Command(update={"messages": [ToolMessage(f"Error: Missing prompt files: {', '.join(missing)}", tool_call_id=tool_call_id)]})
+
+    try:
+        req_path = f"{base}/artifacts/requirement.md"
+        ctx_path = f"{base}/context/requirement_context.md"
+        req_path, ctx_path = generate_requirements_from_doc(
+            path_to_document_pdf=doc_path,
+            path_to_initPrompt_1=prompts["init_1"],
+            path_to_initPrompt_2=prompts["init_2"],
+            path_to_reflectionArewrite_Prompt=prompts["reflection"],
+            path_to_summaryPrompt=prompts["summary"],
+            output_requirements_md_path=req_path,
+            output_context_md_path=ctx_path
+        )
+        return Command(update={"messages": [ToolMessage(f"Requirements saved to {os.path.basename(req_path)} (version {version})", tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(f"Error processing document: {e}", tool_call_id=tool_call_id)]})
+
+@tool
+def generate_testCases_from_RTM_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """
+    Generates test cases from the Requirements Traceability Matrix (RTM).
+
+    **Behavior:**
+    - Reads the RTM from the project's artifacts folder
+    - Extracts test case IDs and descriptions
+    - Generates detailed test cases in Markdown format
+    - Saves the test cases to a file in the project's artifacts folder
+
+    **Outputs:**
+    - Updates `state["testCases"]` with generated test cases
+    - Adds a success message to `state["messages"]`
+    """
+    import os, sys
+    
+    logger.info("Starting test case generation from RTM...")
+    
+    project_id = state.get("project_id")
+    from ai.mcp.gen_requirements import generate_requirements_from_doc
+  
 
     base = f"data/project-{project_id}"
     doc_path = f"{base}/versions/{version}/srs.pdf"
@@ -142,12 +203,43 @@ def generate_testCases_from_RTM_tool(
     rtm_path = f"{base}/requirements_traceability_matrix.md"
     out_path = f"{base}/test_cases.md"
     prompts_base = "data/default/prompts/gen_testCases"
+    
+
+    base = f"data/project-{project_id}/artifacts"
+    rtm_path = f"{base}/requirements_traceability_matrix.md"
+    out_path = f"{base}/test_cases.md"
+    prompts_base = "data/default/prompts/gen_testCases"
     prompt_paths = {
         "init_1": f"{prompts_base}/initial_prompt_1.txt",
         "init_2": f"{prompts_base}/initial_prompt_2.txt", 
-        "reflection": f"{prompts_base}/reflection_prompt.txt",
-        "final": f"{prompts_base}/final_prompt.txt"
+        "reflection": f"{prompts_base}/reflection_and_rewrite_prompt.txt",
+        "summary": f"{prompts_base}/context_summary.txt"
     }
+    
+    logger.info(f"Looking for PDF document at: {document_path}")
+    
+    # Check if the PDF file exists
+    if not os.path.exists(document_path):
+        # Try to find any PDF files in the version folder as fallback
+        version_folder = f"{base_path}/versions/{current_version}"
+        pdf_pattern = f"{version_folder}/*.pdf"
+        pdf_files = glob.glob(pdf_pattern)
+        
+        if pdf_files:
+            document_path = pdf_files[0]  # Use the first PDF found
+            actual_filename = os.path.basename(document_path)
+            logger.info(f"PDF file '{filename}' not found, using '{actual_filename}' instead")
+        else:
+            logger.error(f"No PDF files found in {version_folder}")
+            return Command(update={
+                "messages": [
+                    ToolMessage(
+                        f"Error: No PDF document found in version {current_version}. Please ensure the SRS document is uploaded.",
+                        tool_call_id=tool_call_id
+                    )
+                ]
+            })
+    
     # Verify all prompt files exist
     missing_prompts = []
     for prompt_name, prompt_path in prompt_paths.items():
@@ -174,15 +266,13 @@ def generate_testCases_from_RTM_tool(
         root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         if root not in sys.path: sys.path.append(root)
 
-        from ai.mcp.gen_testCases import generate_test_cases_from_rtm
+        from ai.mcp.gen_testCases import generate_test_cases_from_rtm        
         out_path = generate_test_cases_from_rtm( rtm_content = rtm_content,
             path_to_initPrompt_1=prompt_paths["init_1"],
             path_to_initPrompt_2=prompt_paths["init_2"],
             path_to_reflectionPrompt=prompt_paths["reflection"],
             path_to_finalPrompt=prompt_paths["final"],
             out_path=out_path)
-
-
         return Command(update={
             "messages": [ToolMessage(f"Test cases generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
         })
@@ -200,6 +290,8 @@ def generate_rtm_fromRequirements_tool(
     To create a comprehensive mapping between requirements and test cases to ensure complete test coverage.
 
     **Behavior:**
+    - Constructs file paths using: data/project-{project_id}/artifacts/requirement.md and data/project-{project_id}/context/requirement_context.md
+    - Validates that the requirements and context files exist at the constructed paths
     - Reads the requirements and context from their respective files
     - Analyzes requirements and maps them to test cases with IDs and descriptions
     
@@ -208,12 +300,15 @@ def generate_rtm_fromRequirements_tool(
     - Adds a success tool message in `state["messages"]`
 
     **User Interaction:**
+    - The tool automatically handles all file management and path construction.
     - Don't mention the internal file paths. Always refer to the RTM by its filename only.
     - Emphasize that this creates requirement-to-test-case mapping for full traceability.
     """
     import os, sys
 
     logger.info("Starting RTM generation from requirements...")
+    
+    project_id = state.get('project_id')
     
     project_id = state.get("project_id")
     if not project_id:
@@ -444,8 +539,16 @@ llm = ChatGoogleGenerativeAI(
 #     timeout=settings.llm.timeout,
 #     max_retries=settings.llm.max_retries,
 #     api_key=settings.llm.api_key,
-# )
 
+llm_non_streaming = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.3,
+    max_tokens = None,
+    api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
+)
+
+tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool,
+         get_requirement_info_from_description_tool,change_requirement_info_tool]
 llm_non_streaming = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=0.3,

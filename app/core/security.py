@@ -48,7 +48,10 @@ def decode_access_token(token: str) -> dict:
     except JWTError:
         return {}
     
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/users/login",
+    scheme_name="UserOAuth2PasswordBearer"
+)
 
 async def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     """Dependency to get the current user from JWT token."""
