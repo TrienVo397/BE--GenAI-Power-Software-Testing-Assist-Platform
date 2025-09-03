@@ -53,8 +53,19 @@ class Token(BaseModel):
     token_type: str
 
 class UserLogin(BaseModel):
-    username: str
+    """User login schema - accepts username or email"""
+    username: str  # OAuth2 standard field name, but accepts username or email
     password: str
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "john_doe or john@example.com",
+                "password": "your_password"
+            },
+            "description": "OAuth2 login form. The 'username' field accepts either username or email address."
+        }
+    )
 
 class UserRegister(BaseModel):
     username: str

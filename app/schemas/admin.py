@@ -78,9 +78,19 @@ class AdminCredentialUpdate(BaseModel):
 
 # Admin authentication schemas
 class AdminLogin(BaseModel):
-    """Admin login schema"""
-    admin_username: str
+    """Admin login schema - accepts admin username or email"""
+    admin_username: str  # OAuth2 standard field name, but accepts username or email
     password: str
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "admin_username": "admin_user or admin@example.com",
+                "password": "your_password"
+            },
+            "description": "OAuth2 login form. The 'admin_username' field accepts either username or email address."
+        }
+    )
 
 class AdminToken(BaseModel):
     """Admin authentication token"""

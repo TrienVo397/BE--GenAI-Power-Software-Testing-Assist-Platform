@@ -41,6 +41,19 @@ class CRUDUser:
         statement = select(User).where(User.username == username)
         user = db.exec(statement).first()
         return user
+    
+    def get_by_username_or_email(self, db: Session, identifier: str) -> Optional[User]:
+        """Get user by username or email - useful for login"""
+        # Try username first
+        statement = select(User).where(User.username == identifier)
+        user = db.exec(statement).first()
+        if user:
+            return user
+        
+        # Try email if username didn't match
+        statement = select(User).where(User.email == identifier)
+        user = db.exec(statement).first()
+        return user
         
     def get_multi(self, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
         statement = select(User).offset(skip).limit(limit)

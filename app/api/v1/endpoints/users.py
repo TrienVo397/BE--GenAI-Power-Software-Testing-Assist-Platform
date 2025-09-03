@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/v1/users/login",
-    scheme_name="UserOAuth2PasswordBearer"
+    scheme_name="UserOAuth2PasswordBearer",
+    description="Login using either username or email address"
 )
 
 router = APIRouter()
@@ -38,14 +39,22 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """OAuth2 login with username and password form data"""
+    """
+    OAuth2 login with username/email and password form data
+    
+    The username field accepts either:
+    - Username (e.g., "john_doe")  
+    - Email address (e.g., "john@example.com")
+    """
     from app.crud.credential_crud import credential_crud
     
-    user = user_crud.get_by_username(db, form_data.username)
+    # Try to find user by username or email
+    user = user_crud.get_by_username_or_email(db, form_data.username)
+    
     if not user or not user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username/email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
         
@@ -54,7 +63,7 @@ def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session =
     if not credential or not verify_password(form_data.password, credential.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username/email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

@@ -42,6 +42,19 @@ class CRUDAdmin:
         admin = db.exec(statement).first()
         return admin
     
+    def get_by_username_or_email(self, db: Session, identifier: str) -> Optional[Admin]:
+        """Get admin by username or email - useful for login"""
+        # Try username first
+        statement = select(Admin).where(Admin.admin_username == identifier)
+        admin = db.exec(statement).first()
+        if admin:
+            return admin
+        
+        # Try email if username didn't match
+        statement = select(Admin).where(Admin.admin_email == identifier)
+        admin = db.exec(statement).first()
+        return admin
+    
     def get_by_linked_user(self, db: Session, user_id: uuid.UUID) -> Optional[Admin]:
         """Get admin by linked user ID"""
         statement = select(Admin).where(Admin.linked_user_id == user_id)

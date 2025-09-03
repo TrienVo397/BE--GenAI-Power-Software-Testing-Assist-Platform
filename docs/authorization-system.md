@@ -32,12 +32,29 @@ The GenAI Power Software Testing Assist Platform implements a **dual authorizati
 ```http
 POST /api/v1/admin/login
 {
-  "admin_username": "admin",
+  "username": "admin",  // Can be admin username OR email
   "password": "admin123"
 }
 
 # Returns admin token with full system access
 # Token works on both /api/v1/admin/* and /api/v1/users/* endpoints
+```
+
+#### Login Examples:
+```http
+# Login with username
+POST /api/v1/admin/login
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+# Login with email
+POST /api/v1/admin/login  
+{
+  "username": "admin@example.com",
+  "password": "admin123"
+}
 ```
 
 #### Default Admin Accounts:
@@ -109,12 +126,29 @@ The system uses **three fixed project roles**:
 ```http
 POST /api/v1/users/login
 {
-  "username": "user1",
+  "username": "user1",  // Can be username OR email
   "password": "user123"
 }
 
 # Returns user token
 # Token only grants access to projects where user is a member
+```
+
+#### Login Examples:
+```http
+# Login with username
+POST /api/v1/users/login
+{
+  "username": "user1",
+  "password": "user123"
+}
+
+# Login with email
+POST /api/v1/users/login
+{
+  "username": "user1@example.com",
+  "password": "user123"
+}
 ```
 
 ### Default User Accounts:
@@ -373,10 +407,15 @@ class Admin(SQLModel, table=True):
 
 ### Admin Operations:
 ```bash
-# Admin login
+# Admin login (with username)
 curl -X POST "/api/v1/admin/login" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "admin_username=admin&password=admin123"
+  -d "username=admin&password=admin123"
+
+# Admin login (with email) 
+curl -X POST "/api/v1/admin/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin@example.com&password=admin123"
 
 # Create user (admin can create users directly)
 curl -X POST "/api/v1/admin/users/create" \
@@ -396,10 +435,15 @@ curl -X GET "/api/v1/projects/{any_project_id}" \
 
 ### User Project Management:
 ```bash
-# User login
+# User login (with username)
 curl -X POST "/api/v1/users/login" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=user1&password=user123"
+
+# User login (with email)
+curl -X POST "/api/v1/users/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=user1@example.com&password=user123"
 
 # Create project (user becomes MANAGER automatically)
 curl -X POST "/api/v1/projects/" \

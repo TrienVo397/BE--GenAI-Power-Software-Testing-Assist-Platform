@@ -76,8 +76,16 @@ async def admin_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """Admin login endpoint (OAuth2 compatible for Swagger UI)"""
-    admin = admin_crud.get_by_username(db, form_data.username)
+    """
+    Admin login endpoint (OAuth2 compatible for Swagger UI) - supports username or email
+    
+    The username field accepts either:
+    - Admin username (e.g., "admin_user")
+    - Admin email address (e.g., "admin@example.com")
+    """
+    # Try to find admin by username or email
+    admin = admin_crud.get_by_username_or_email(db, form_data.username)
+    
     if not admin:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
