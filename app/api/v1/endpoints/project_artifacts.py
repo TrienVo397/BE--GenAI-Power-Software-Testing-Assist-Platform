@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=ProjectArtifactRead)
-def create_project_artifact(
+async def create_project_artifact(
     artifact: ProjectArtifactCreate, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -55,7 +55,7 @@ def create_project_artifact(
     return created_artifact
 
 @router.get("/{artifact_id}", response_model=ProjectArtifactRead)
-def read_project_artifact(
+async def read_project_artifact(
     artifact_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -78,7 +78,7 @@ def read_project_artifact(
     return db_artifact
 
 @router.get("/project/{project_id}", response_model=List[ProjectArtifactRead])
-def read_project_artifacts_by_project(
+async def read_project_artifacts_by_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -105,7 +105,7 @@ def read_project_artifacts_by_project(
     return artifacts
 
 @router.get("/version/{version_id}", response_model=List[ProjectArtifactRead])
-def read_project_artifacts_by_version(
+async def read_project_artifacts_by_version(
     version_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -132,7 +132,7 @@ def read_project_artifacts_by_version(
     return artifacts
 
 @router.get("/type/{artifact_type}", response_model=List[ProjectArtifactRead])
-def read_project_artifacts_by_type(
+async def read_project_artifacts_by_type(
     artifact_type: str, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -144,7 +144,7 @@ def read_project_artifacts_by_type(
     return []
 
 @router.get("/", response_model=List[ProjectArtifactRead])
-def read_project_artifacts(
+async def read_project_artifacts(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
@@ -157,7 +157,7 @@ def read_project_artifacts(
     return []
 
 @router.put("/{artifact_id}", response_model=ProjectArtifactRead)
-def update_project_artifact(
+async def update_project_artifact(
     artifact_id: uuid.UUID, 
     artifact: ProjectArtifactUpdate, 
     db: Session = Depends(get_db),
@@ -184,7 +184,7 @@ def update_project_artifact(
     return updated_artifact
 
 @router.delete("/{artifact_id}", response_model=ProjectArtifactRead)
-def delete_project_artifact(
+async def delete_project_artifact(
     artifact_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

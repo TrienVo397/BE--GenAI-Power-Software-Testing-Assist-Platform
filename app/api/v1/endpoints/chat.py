@@ -44,7 +44,7 @@ def load_main_system_prompt() -> str:
 # Chat Session Endpoints
 
 @router.post("/sessions", response_model=ChatSessionRead)
-def create_chat_session(
+async def create_chat_session(
     session_simple: ChatSessionCreateSimple,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -98,7 +98,7 @@ def create_chat_session(
     return chat_session
 
 @router.get("/sessions", response_model=ChatListResponse)
-def get_chat_sessions(
+async def get_chat_sessions(
     project_id: uuid.UUID = Query(..., description="Project ID (required)"),
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
@@ -136,7 +136,7 @@ def get_chat_sessions(
     )
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionRead)
-def get_chat_session(
+async def get_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -166,7 +166,7 @@ def get_chat_session(
     return session
 
 @router.get("/sessions/{session_id}/messages", response_model=ChatSessionWithMessages)
-def get_chat_session_messages(
+async def get_chat_session_messages(
     session_id: uuid.UUID,
     limit: int = Query(50, ge=1, le=200, description="Number of recent messages to include"),
     db: Session = Depends(get_db),
@@ -206,7 +206,7 @@ def get_chat_session_messages(
 # Individual Message Operations
 
 @router.put("/sessions/{session_id}/messages/{sequence_num}", response_model=ChatMessageRead)
-def update_chat_message(
+async def update_chat_message(
     session_id: uuid.UUID,
     sequence_num: int,
     content: str,
@@ -252,7 +252,7 @@ def update_chat_message(
     return updated_message
 
 @router.delete("/sessions/{session_id}/messages/{sequence_num}")
-def delete_chat_message(
+async def delete_chat_message(
     session_id: uuid.UUID,
     sequence_num: int,
     db: Session = Depends(get_db),
@@ -296,7 +296,7 @@ def delete_chat_message(
     return {"message": "Chat message deleted successfully"}
 
 @router.put("/sessions/{session_id}", response_model=ChatSessionRead)
-def update_chat_session(
+async def update_chat_session(
     session_id: uuid.UUID,
     session_update: ChatSessionUpdate,
     db: Session = Depends(get_db),
@@ -334,7 +334,7 @@ def update_chat_session(
     return updated_session
 
 @router.delete("/sessions/{session_id}")
-def delete_chat_session(
+async def delete_chat_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

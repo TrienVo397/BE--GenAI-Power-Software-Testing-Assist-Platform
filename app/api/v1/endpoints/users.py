@@ -30,7 +30,7 @@ router = APIRouter()
 
 # Authentication endpoints
 @router.post("/register", response_model=UserRead)
-def register(user_data: UserRegister, db: Session = Depends(get_db)):
+async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register a new user - DISABLED for security (admin-only user creation)"""
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -38,7 +38,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     )
 
 @router.post("/login", response_model=Token)
-def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     OAuth2 login with username/email and password form data
     

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=DocumentVersionRead)
-def create_document_version(
+async def create_document_version(
     doc_version: DocumentVersionCreate, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -57,7 +57,7 @@ def create_document_version(
         )
 
 @router.get("/{doc_version_id}", response_model=DocumentVersionRead)
-def read_document_version(
+async def read_document_version(
     doc_version_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -74,7 +74,7 @@ def read_document_version(
     return db_doc_version
 
 @router.get("/project/{project_id}", response_model=List[DocumentVersionRead])
-def read_document_versions_by_project(
+async def read_document_versions_by_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -97,7 +97,7 @@ def read_document_versions_by_project(
     return versions
 
 @router.get("/project/{project_id}/current", response_model=DocumentVersionRead)
-def get_current_document_version(
+async def get_current_document_version(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -122,7 +122,7 @@ def get_current_document_version(
     return version
 
 @router.put("/{doc_version_id}", response_model=DocumentVersionRead)
-def update_document_version(
+async def update_document_version(
     doc_version_id: uuid.UUID, 
     doc_version: DocumentVersionUpdate, 
     db: Session = Depends(get_db),
@@ -152,7 +152,7 @@ def update_document_version(
     return updated_version
 
 @router.delete("/{doc_version_id}", response_model=DocumentVersionRead)
-def delete_document_version(
+async def delete_document_version(
     doc_version_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

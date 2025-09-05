@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=ProjectRead)
-def create_project(
+async def create_project(
     project_simple: ProjectCreateSimple, 
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
@@ -75,13 +75,13 @@ def create_project(
     # Create the document version
     doc_version = document_version_crud.create(db=db, doc_version=initial_version, current_user=current_user)
     
-    # Create default project artifacts
-    checklist_artifact = ProjectArtifactCreate(
+    # Create default project artifacts according to new structure
+    requirements_traceability_artifact = ProjectArtifactCreate(
         project_id=new_project.id,
         based_on_version=doc_version.id,
-        artifact_type="checklist",
-        file_path="artifacts/checklist.md",
-        note="Initial checklist template",
+        artifact_type="requirements_traceability_matrix",
+        file_path="artifacts/requirements_traceability_matrix.md",
+        note="Requirements traceability matrix for tracking requirement coverage",
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -90,8 +90,8 @@ def create_project(
         project_id=new_project.id,
         based_on_version=doc_version.id,
         artifact_type="testcases",
-        file_path="artifacts/testcase.md",
-        note="Initial test cases template",
+        file_path="artifacts/test_cases.md",
+        note="Generated test cases based on project requirements",
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -101,13 +101,13 @@ def create_project(
         based_on_version=doc_version.id,
         artifact_type="requirement",
         file_path="artifacts/requirement.md",
-        note="Initial requirement template",
+        note="Analyzed and generated requirements for the project",
         created_by=current_user.id,
         updated_by=current_user.id
     )
     
     # Create the artifacts
-    project_artifact_crud.create(db=db, obj_in=checklist_artifact)
+    project_artifact_crud.create(db=db, obj_in=requirements_traceability_artifact)
     project_artifact_crud.create(db=db, obj_in=testcases_artifact)
     project_artifact_crud.create(db=db, obj_in=requirement_artifact)
     
@@ -124,7 +124,7 @@ def create_project(
     return new_project
 
 @router.get("/{project_id}", response_model=ProjectRead)
-def read_project(
+async def read_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -149,7 +149,7 @@ def read_project(
     return db_project
 
 @router.get("/", response_model=List[ProjectRead])
-def read_projects(
+async def read_projects(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
@@ -171,7 +171,7 @@ def read_projects(
     return projects
 
 @router.put("/{project_id}", response_model=ProjectRead)
-def update_project(
+async def update_project(
     project_id: uuid.UUID, 
     project: ProjectUpdate, 
     db: Session = Depends(get_db),
@@ -199,7 +199,7 @@ def update_project(
     return updated_project
 
 @router.delete("/{project_id}", response_model=ProjectRead)
-def delete_project(
+async def delete_project(
     project_id: uuid.UUID, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
