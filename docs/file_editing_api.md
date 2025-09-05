@@ -13,7 +13,7 @@ GET /projects/{project_id}/files?directory={optional_subdirectory}&recursive=tru
 Lists all files in a project or a specific directory within the project.
 
 **Parameters:**
-- `directory`: Optional subdirectory path (e.g., "templates")
+- `directory`: Optional subdirectory path (e.g., "artifacts", "prompts", "context")
 - `recursive`: Whether to include subdirectories (default: true)
 - `include_hidden`: Whether to include hidden files/directories (default: false)
 
@@ -31,11 +31,11 @@ Returns metadata about a file or directory without downloading the content.
 **Response:**
 ```json
 {
-  "name": "checklist.yml",
-  "path": "templates/checklist.yml",
+  "name": "test_cases.md",
+  "path": "artifacts/test_cases.md",
   "type": "file",
   "size": "1024",
-  "extension": "yml",
+  "extension": "md",
   "last_modified": "2025-06-30T14:22:10.123456",
   "created": "2025-06-15T09:45:32.987654"
 }
@@ -58,10 +58,10 @@ Raw file content with appropriate content-type header.
 **Response (when as_json=true for text files):**
 ```json
 {
-  "path": "templates/checklist.yml",
-  "content": "# Checklist template\n- Item 1\n- Item 2",
-  "size": 35,
-  "extension": "yml"
+  "path": "artifacts/requirement.md",
+  "content": "# Requirements Document\n\n## Functional Requirements\n- REQ-001: System must handle user authentication",
+  "size": 85,
+  "extension": "md"
 }
 ```
 
@@ -80,7 +80,7 @@ Multipart form data with a file field.
 ```json
 {
   "status": "success",
-  "path": "templates/checklist.yml",
+  "path": "artifacts/test_cases.md",
   "size": 1024
 }
 ```
@@ -101,8 +101,8 @@ Updates text-based files using JSON content.
 Content-Type: application/json
 ```json
 {
-  "content": "# Updated checklist template\n- New Item 1\n- New Item 2",
-  "description": "Updated formatting and items"
+  "content": "# Updated Requirements Document\n\n## Functional Requirements\n- REQ-001: System must handle user authentication\n- REQ-002: System must support project management",
+  "description": "Added new requirement for project management"
 }
 ```
 
@@ -110,9 +110,9 @@ Content-Type: application/json
 ```json
 {
   "status": "success",
-  "path": "templates/checklist.yml",
-  "size": 51,
-  "description": "Updated formatting and items"
+  "path": "artifacts/requirement.md",
+  "size": 151,
+  "description": "Added new requirement for project management"
 }
 ```
 
@@ -133,7 +133,7 @@ Content-Type: multipart/form-data with a file field.
 ```json
 {
   "status": "success",
-  "path": "templates/checklist.yml",
+  "path": "artifacts/requirement.md",
   "size": 1024
 }
 ```
@@ -152,7 +152,7 @@ Deletes a file or directory from the project.
 ```json
 {
   "status": "success",
-  "message": "Deleted templates/old_file.txt"
+  "message": "Deleted artifacts/old_test.md"
 }
 ```
 
@@ -168,7 +168,7 @@ Creates a new directory in the project.
 ```json
 {
   "status": "success",
-  "path": "templates/new_directory"
+  "path": "artifacts/new_directory"
 }
 ```
 
@@ -207,7 +207,7 @@ Error responses include a detail message explaining what went wrong:
 ## Notes
 
 - All API endpoints require authentication. Include your access token in the request headers.
-- File paths are relative to the project root. For example, to access a file in the templates directory, use `templates/filename.yml`.
+- File paths are relative to the project root. For example, to access a file in the artifacts directory, use `artifacts/requirement.md`.
 - File names and paths should be URL-encoded when used in URLs.
 - The `as_json` parameter for the GET endpoint makes it easy to retrieve text content for editing in web interfaces.
 - For large files, the raw file download (without `as_json`) is more efficient.

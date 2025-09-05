@@ -21,20 +21,13 @@ def create_project_directory_structure(project_id):
     Structure:
     /project-<id>/
     ├── .git/                # Git repository
-    ├── templates/           # Version-controlled templates
-    │   ├── checklist.yml    # YAML template
-    │   ├── test_cases.yml
-    │   ├── requirement.yml
-    │   └── coverage.yml
     ├── prompts/             # AI prompt templates (copied from default/prompts)
     │   └── (all files from default/prompts)
     ├── artifacts/           # Current outputs
-    │   ├── checklist.md
+    │   ├── requirements_traceability_matrix.md
     │   ├── test_cases.md
     │   ├── requirement.md
-    │   └── coverage.md
     ├── context/             # Context files for each artifact
-    │   ├── checklist_context.md
     │   ├── test_cases_context.md
     │   ├── requirement_context.md
     │   └── coverage_context.md
@@ -64,58 +57,10 @@ def create_project_directory_structure(project_id):
         
     # Create the main directory structure
     os.makedirs(project_dir, exist_ok=True)
-    os.makedirs(project_dir / "templates", exist_ok=True)
     os.makedirs(project_dir / "prompts", exist_ok=True)
     os.makedirs(project_dir / "artifacts", exist_ok=True)
     os.makedirs(project_dir / "context", exist_ok=True)
     os.makedirs(project_dir / "versions" / "v0", exist_ok=True)
-    
-    # Copy default template files to project templates
-    default_templates_dir = base_dir / "default" / "templates"
-    
-    # Copy checklist template
-    if (default_templates_dir / "checklist.yml").exists():
-        shutil.copy2(
-            default_templates_dir / "checklist.yml", 
-            project_dir / "templates" / "checklist.yml"
-        )
-    else:
-        # Create empty template if default doesn't exist
-        with open(project_dir / "templates" / "checklist.yml", "w") as f:
-            f.write("# Checklist template\n")
-    
-    # Copy test_cases template
-    if (default_templates_dir / "test_cases.yml").exists():
-        shutil.copy2(
-            default_templates_dir / "test_cases.yml", 
-            project_dir / "templates" / "test_cases.yml"
-        )
-    else:
-        # Create empty template if default doesn't exist
-        with open(project_dir / "templates" / "test_cases.yml", "w") as f:
-            f.write("# Test case template\n")
-    
-    # Copy requirement template
-    if (default_templates_dir / "requirement.yml").exists():
-        shutil.copy2(
-            default_templates_dir / "requirement.yml", 
-            project_dir / "templates" / "requirement.yml"
-        )
-    else:
-        # Create empty template if default doesn't exist
-        with open(project_dir / "templates" / "requirement.yml", "w") as f:
-            f.write("# Requirement template\n")
-    
-    # Copy coverage template
-    if (default_templates_dir / "coverage.yml").exists():
-        shutil.copy2(
-            default_templates_dir / "coverage.yml", 
-            project_dir / "templates" / "coverage.yml"
-        )
-    else:
-        # Create empty template if default doesn't exist
-        with open(project_dir / "templates" / "coverage.yml", "w") as f:
-            f.write("# Coverage template\n")
     
     # Copy default prompt files to project prompts
     default_prompts_dir = base_dir / "default" / "prompts"
@@ -138,23 +83,17 @@ def create_project_directory_structure(project_id):
         with open(project_dir / "prompts" / "README.md", "w") as f:
             f.write("# Project Prompts\n\nThis directory contains prompt templates for AI agent interactions.\n")
     
-    # Create empty artifact files
-    with open(project_dir / "artifacts" / "checklist.md", "w") as f:
-        f.write("# Generated Checklist\n")
+    # Create empty artifact files according to the structure
+    with open(project_dir / "artifacts" / "requirements_traceability_matrix.md", "w") as f:
+        f.write("# Requirements Traceability Matrix\n\nThis document maps requirements to test cases and tracks their coverage.\n")
     
     with open(project_dir / "artifacts" / "test_cases.md", "w") as f:
-        f.write("# Generated Test Cases\n")
+        f.write("# Generated Test Cases\n\nThis document contains the generated test cases based on project requirements.\n")
     
     with open(project_dir / "artifacts" / "requirement.md", "w") as f:
-        f.write("# Generated Requirements\n")
-    
-    with open(project_dir / "artifacts" / "coverage.md", "w") as f:
-        f.write("# Generated Coverage Analysis\n")
+        f.write("# Generated Requirements\n\nThis document contains the analyzed and generated requirements for the project.\n")
     
     # Create empty context files to store the context of each artifact
-    with open(project_dir / "context" / "checklist_context.md", "w") as f:
-        f.write("# Checklist Context\n\nThis file contains the context and background information used to generate the checklist artifact.\n")
-    
     with open(project_dir / "context" / "test_cases_context.md", "w") as f:
         f.write("# Test Case Context\n\nThis file contains the context and background information used to generate the test case artifact.\n")
     
@@ -166,9 +105,19 @@ def create_project_directory_structure(project_id):
     
     # Initialize git repository
     try:
-        subprocess.run(["git", "init"], cwd=project_dir, check=True)
-    except (subprocess.SubprocessError, FileNotFoundError):
-        # If git is not available, create the directory anyway
+        # Check if git is available
+        subprocess.run(["git", "--version"], check=True, capture_output=True)
+        # Initialize the repository
+        subprocess.run(["git", "init"], cwd=project_dir, check=True, capture_output=True)
+        # Configure basic git settings for the repository
+        subprocess.run(["git", "config", "user.name", "GenAI Platform"], cwd=project_dir, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "platform@example.com"], cwd=project_dir, check=True, capture_output=True)
+        # Create initial commit
+        subprocess.run(["git", "add", "."], cwd=project_dir, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "Initial project setup"], cwd=project_dir, check=True, capture_output=True)
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        # If git is not available or fails, create the directory anyway
+        print(f"Git initialization failed: {e}. Creating .git directory manually.")
         os.makedirs(project_dir / ".git", exist_ok=True)
     
     return str(project_dir)
