@@ -177,57 +177,20 @@ def generate_testCases_from_RTM_tool(
 
         from ai.mcp.gen_testCases import generate_test_cases_from_rtm
         
-        # Create background task instead of blocking execution
-        import sys
-        import os
-        root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        if root not in sys.path: 
-            sys.path.append(root)
+        # Execute test case generation synchronously (MCP tools must complete fully)
+        logger.info("Executing test case generation from RTM...")
+        out_path = generate_test_cases_from_rtm(
+            rtm_content=rtm_content,
+            path_to_initPrompt_1=prompt_paths["init_1"],
+            path_to_initPrompt_2=prompt_paths["init_2"],
+            path_to_reflectionPrompt=prompt_paths["reflection"],
+            path_to_finalPrompt=prompt_paths["final"],
+            out_path=out_path
+        )
         
-        try:
-            from app.core.tasks import task_manager, TaskTypes
-            
-            # Create background task for test case generation
-            user_id = state.get("user_id", "system")  # Get user ID from state if available
-            task_id = task_manager.create_task(
-                task_func=lambda: generate_test_cases_from_rtm(
-                    rtm_content=rtm_content,
-                    path_to_initPrompt_1=prompt_paths["init_1"],
-                    path_to_initPrompt_2=prompt_paths["init_2"],
-                    path_to_reflectionPrompt=prompt_paths["reflection"],
-                    path_to_finalPrompt=prompt_paths["final"],
-                    out_path=out_path
-                ),
-                user_id=str(user_id),
-                task_type=TaskTypes.GENERATE_TEST_CASES,
-                project_id=str(project_id)
-            )
-            
-            return Command(update={
-                "messages": [ToolMessage(
-                    f"🔄 **Background Task Started**\n\n"
-                    f"I've started generating test cases from your RTM in the background.\n\n"
-                    f"**Task ID:** `{task_id}`\n"
-                    f"**Project:** {project_id}\n\n"
-                    f"The test cases will be generated and saved to `{os.path.basename(out_path)}` shortly. "
-                    f"You can continue our conversation while this processes in the background!",
-                    tool_call_id=tool_call_id
-                )]
-            })
-            
-        except ImportError:
-            # Fallback to original blocking behavior if task manager not available
-            logger.warning("Task manager not available, falling back to synchronous execution")
-            out_path = generate_test_cases_from_rtm( rtm_content = rtm_content,
-                path_to_initPrompt_1=prompt_paths["init_1"],
-                path_to_initPrompt_2=prompt_paths["init_2"],
-                path_to_reflectionPrompt=prompt_paths["reflection"],
-                path_to_finalPrompt=prompt_paths["final"],
-                out_path=out_path)
-            
-            return Command(update={
-                "messages": [ToolMessage(f"Test cases generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
-            })
+        return Command(update={
+            "messages": [ToolMessage(f"Test cases generated successfully. Saved to {os.path.basename(out_path)}", tool_call_id=tool_call_id)]
+        })
 
     except Exception as e:
         return Command(update={"messages": [ToolMessage(f"Error: {e}", tool_call_id=tool_call_id)]})
@@ -470,7 +433,7 @@ def change_requirement_info_tool(
 google_llm_api_key = os.getenv("GOOGLE_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     temperature=0.3,
     max_tokens = None,
     api_key = google_llm_api_key,
@@ -487,7 +450,7 @@ llm = ChatGoogleGenerativeAI(
 # )
 
 llm_non_streaming = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     temperature=0.3,
     max_tokens = None,
     api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",

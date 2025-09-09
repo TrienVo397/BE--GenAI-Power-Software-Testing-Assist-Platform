@@ -6,6 +6,7 @@ Prevents server blocking during MCP tool execution and other CPU-intensive tasks
 
 import asyncio
 import uuid
+import threading
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Callable
 from enum import Enum
@@ -42,7 +43,7 @@ class TaskManager:
     
     def __init__(self):
         self._tasks: Dict[str, TaskInfo] = {}
-        self._running_tasks: Dict[str, asyncio.Task] = {}
+        self._running_tasks: Dict[str, Optional[asyncio.Task]] = {}
         
     def create_task(
         self, 
@@ -73,9 +74,30 @@ class TaskManager:
         
         self._tasks[task_id] = task_info
         
-        # Create and start the asyncio task
-        async_task = asyncio.create_task(self._run_task(task_id, task_func, **kwargs))
-        self._running_tasks[task_id] = async_task
+        # Check if we have an event loop first, then create task accordingly
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If we get here, we have an event loop, so use ensure_future
+            async_task = asyncio.ensure_future(self._run_task(task_id, task_func, **kwargs))
+            self._running_tasks[task_id] = async_task
+        except RuntimeError:
+            # No event loop is running, use thread-based execution
+            import threading
+            
+            def run_in_background():
+                # Create a new event loop for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._run_task(task_id, task_func, **kwargs))
+                finally:
+                    loop.close()
+            
+            # Run in a separate thread
+            thread = threading.Thread(target=run_in_background, daemon=True)
+            thread.start()
+            # Don't store task reference for thread-based execution
         
         logger.info(f"Created background task {task_id} of type {task_type} for user {user_id}")
         
@@ -135,9 +157,11 @@ class TaskManager:
     def cancel_task(self, task_id: str) -> bool:
         """Cancel a running task"""
         if task_id in self._running_tasks:
-            self._running_tasks[task_id].cancel()
-            logger.info(f"Cancelled task {task_id}")
-            return True
+            task = self._running_tasks[task_id]
+            if task is not None:
+                task.cancel()
+                logger.info(f"Cancelled task {task_id}")
+                return True
         return False
     
     def get_user_tasks(self, user_id: str, task_type: Optional[str] = None) -> list[TaskInfo]:

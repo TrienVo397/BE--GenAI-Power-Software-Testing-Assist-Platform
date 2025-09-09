@@ -19,7 +19,7 @@ from app.core.tasks import task_manager, TaskTypes
 logger = logging.getLogger(__name__)
 
 # Try to import the coverage test function
-async def get_run_coverage_test():
+def get_run_coverage_test():
     """Dynamically import the run_coverage_test function"""
     try:
         # Add the ai/mcp directory to the path

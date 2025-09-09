@@ -27,7 +27,7 @@ class AgentState(TypedDict, total=False):
 
 # 2) Initialize a zero-temperature LLM for deterministic JSON extraction
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     temperature = 0.0,
     max_tokens = api_max_tokens,
     api_key = google_llm_api_key
