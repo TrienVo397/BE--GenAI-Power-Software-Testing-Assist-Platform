@@ -632,61 +632,51 @@ tools_node = ToolNode(tools)
 
 def call_model(state: AgentState):
     logger.info("Calling LLM with current state messages.")
-    
-    messages = list(state["messages"])  # Create a copy to avoid modifying original
-    
-    # Check if we have a system message at the start
-    if not messages or not isinstance(messages[0], SystemMessage):
-        # Load and prepend system prompt if not present
-        system_prompt = load_main_system_prompt()
-        messages.insert(0, SystemMessage(content=system_prompt))
-    
-    # Append artifacts status to existing system message if available
-    if state.get("data", {}).get("artifacts_status"):
-        if isinstance(messages[0], SystemMessage):
-            messages[0] = SystemMessage(content=messages[0].content + state["data"]["artifacts_status"])
-    
-    response = llm_with_tools.invoke(messages)
+    response = llm_with_tools.invoke(state["messages"])
     return {"messages": response}
 
-# Context preparation node for artifact status
-def prepare_artifacts_status(state: AgentState):
-    """Update the artifacts status in state data before model call"""
-    project_id = state.get("project_id")
+# Initial system message setup node
+def setup_initial_message(state: AgentState):
+    """Set up initial system message with status if not already present"""
+    messages = state["messages"]
     
-    if project_id:
-        artifacts_base = f"data/project-{project_id}/artifacts"
-        requirements_exists = os.path.exists(f"{artifacts_base}/requirement.md")
-        rtm_exists = os.path.exists(f"{artifacts_base}/requirements_traceability_matrix.md") 
-        testcases_exists = os.path.exists(f"{artifacts_base}/test_cases.md")
+    # Only set up system message if none exists yet
+    if not messages or not isinstance(messages[0], SystemMessage):
+        system_prompt = load_main_system_prompt()
+        project_id = state.get("project_id")
         
-        # Build status message
-        status_parts = []
-        status_parts.append("Requirements have" if requirements_exists else "Requirements have NOT")
-        status_parts.append("RTM has" if rtm_exists else "RTM has NOT") 
-        status_parts.append("Test Cases have" if testcases_exists else "Test Cases have NOT")
-        
-        status_msg = (
-            "\nCurrent testing artifacts status: "
-            f"{status_parts[0]} been generated, "
-            f"{status_parts[1]} been generated, "
-            f"{status_parts[2]} been generated."
-        )
-        
-        # Store status in state data
-        state["data"] = state.get("data", {})
-        state["data"]["artifacts_status"] = status_msg
-        
+        # Add status only in the initial system message
+        if project_id:
+            artifacts_base = f"data/project-{project_id}/artifacts"
+            requirements_exists = os.path.exists(f"{artifacts_base}/requirement.md")
+            rtm_exists = os.path.exists(f"{artifacts_base}/requirements_traceability_matrix.md") 
+            testcases_exists = os.path.exists(f"{artifacts_base}/test_cases.md")
+            
+            status_parts = []
+            status_parts.append("Requirements have" if requirements_exists else "Requirements have NOT")
+            status_parts.append("RTM has" if rtm_exists else "RTM has NOT") 
+            status_parts.append("Test Cases have" if testcases_exists else "Test Cases have NOT")
+            
+            status_msg = (
+                "\nCurrent testing artifacts status: "
+                f"{status_parts[0]} been generated, "
+                f"{status_parts[1]} been generated, "
+                f"{status_parts[2]} been generated."
+            )
+            system_prompt += status_msg
+            
+        state["messages"] = [SystemMessage(content=system_prompt)] + messages
+    
     return state
 
 # Build the LangGraph state machine
 builder = StateGraph(AgentState)
-builder.add_node("prepare_artifacts_status", prepare_artifacts_status)
+builder.add_node("setup_initial_message", setup_initial_message)
 builder.add_node("call_model", call_model)
 builder.add_node("tools", tools_node)
 
-builder.add_edge(START, "prepare_artifacts_status")
-builder.add_edge("prepare_artifacts_status", "call_model")
+builder.add_edge(START, "setup_initial_message")
+builder.add_edge("setup_initial_message", "call_model")
 builder.add_conditional_edges(
     "call_model",
     tools_condition,
@@ -726,9 +716,37 @@ async def stream_agent_response(
     logger.info(f"Starting agent response stream for session {session_id}")
     
     try:
+        messages = list(previous_messages)
+        
+        # Only add system message with status if this is the start of conversation
+        if not messages:
+            system_prompt = load_main_system_prompt()
+            
+            # Check artifacts status only at conversation start
+            if project_id:
+                artifacts_base = f"data/project-{project_id}/artifacts"
+                requirements_exists = os.path.exists(f"{artifacts_base}/requirement.md")
+                rtm_exists = os.path.exists(f"{artifacts_base}/requirements_traceability_matrix.md") 
+                testcases_exists = os.path.exists(f"{artifacts_base}/test_cases.md")
+                
+                status_parts = []
+                status_parts.append("Requirements have" if requirements_exists else "Requirements have NOT")
+                status_parts.append("RTM has" if rtm_exists else "RTM has NOT") 
+                status_parts.append("Test Cases have" if testcases_exists else "Test Cases have NOT")
+                
+                status_msg = (
+                    "\nCurrent testing artifacts status: "
+                    f"{status_parts[0]} been generated, "
+                    f"{status_parts[1]} been generated, "
+                    f"{status_parts[2]} been generated."
+                )
+                system_prompt += status_msg
+            
+            messages.insert(0, SystemMessage(content=system_prompt))
+        
         # Create conversation state with provided data
         conversation_state = AgentState(
-            messages=previous_messages + [HumanMessage(content=user_message)],
+            messages=messages + [HumanMessage(content=user_message)],
             project_id=project_id,
             current_version=current_version,
             project_context=project_context,
