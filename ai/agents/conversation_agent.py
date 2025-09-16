@@ -632,15 +632,61 @@ tools_node = ToolNode(tools)
 
 def call_model(state: AgentState):
     logger.info("Calling LLM with current state messages.")
-    response = llm_with_tools.invoke(state["messages"])
+    
+    messages = list(state["messages"])  # Create a copy to avoid modifying original
+    
+    # Check if we have a system message at the start
+    if not messages or not isinstance(messages[0], SystemMessage):
+        # Load and prepend system prompt if not present
+        system_prompt = load_main_system_prompt()
+        messages.insert(0, SystemMessage(content=system_prompt))
+    
+    # Append artifacts status to existing system message if available
+    if state.get("data", {}).get("artifacts_status"):
+        if isinstance(messages[0], SystemMessage):
+            messages[0] = SystemMessage(content=messages[0].content + state["data"]["artifacts_status"])
+    
+    response = llm_with_tools.invoke(messages)
     return {"messages": response}
+
+# Context preparation node for artifact status
+def prepare_artifacts_status(state: AgentState):
+    """Update the artifacts status in state data before model call"""
+    project_id = state.get("project_id")
+    
+    if project_id:
+        artifacts_base = f"data/project-{project_id}/artifacts"
+        requirements_exists = os.path.exists(f"{artifacts_base}/requirement.md")
+        rtm_exists = os.path.exists(f"{artifacts_base}/requirements_traceability_matrix.md") 
+        testcases_exists = os.path.exists(f"{artifacts_base}/test_cases.md")
+        
+        # Build status message
+        status_parts = []
+        status_parts.append("Requirements have" if requirements_exists else "Requirements have NOT")
+        status_parts.append("RTM has" if rtm_exists else "RTM has NOT") 
+        status_parts.append("Test Cases have" if testcases_exists else "Test Cases have NOT")
+        
+        status_msg = (
+            "\nCurrent testing artifacts status: "
+            f"{status_parts[0]} been generated, "
+            f"{status_parts[1]} been generated, "
+            f"{status_parts[2]} been generated."
+        )
+        
+        # Store status in state data
+        state["data"] = state.get("data", {})
+        state["data"]["artifacts_status"] = status_msg
+        
+    return state
 
 # Build the LangGraph state machine
 builder = StateGraph(AgentState)
+builder.add_node("prepare_artifacts_status", prepare_artifacts_status)
 builder.add_node("call_model", call_model)
 builder.add_node("tools", tools_node)
 
-builder.add_edge(START, "call_model")
+builder.add_edge(START, "prepare_artifacts_status")
+builder.add_edge("prepare_artifacts_status", "call_model")
 builder.add_conditional_edges(
     "call_model",
     tools_condition,
