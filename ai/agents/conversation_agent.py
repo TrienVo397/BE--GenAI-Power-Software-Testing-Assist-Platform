@@ -363,7 +363,70 @@ def get_requirement_info_from_description_tool(
         return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
 
 
-# ...existing code...
+
+@tool
+def get_testcase_info_by_lookup_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    target_key: Annotated[str, 'The column name to look up in the Markdown table'],
+    target_value: Annotated[str, 'The value to match in the Markdown table']
+) -> Command:
+    """
+    Inquiry the test cases that match with the target key-value and get the full information of those test cases (ID, description, expected result, etc).
+
+    **Behavior**
+    - Parses the Markdown test cases file and finds rows where the target column matches the target value.
+    - Returns a list of dictionaries for all matching test cases.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned test cases, else the message is an empty list.
+
+    **Note**
+    - The Markdown table must have headers matching the column names.
+    - The function is case-insensitive for keys and values.
+    """
+    import os
+    import re
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage("Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    tc_path = f"data/project-{project_id}/artifacts/test_cases.md"
+    if not os.path.exists(tc_path):
+        return Command(update={"messages": [ToolMessage("Test cases file not found.", tool_call_id=tool_call_id)]})
+
+    with open(tc_path, "r", encoding="utf-8") as f:
+        md_text = f.read()
+
+    # Extract Markdown table
+    table_match = re.search(r"\|.*?\|\n\|[-| ]+\|\n((?:\|.*\|\n?)+)", md_text, re.DOTALL)
+    if not table_match:
+        return Command(update={"messages": [ToolMessage("No test cases table found.", tool_call_id=tool_call_id)]})
+
+    table = table_match.group(0).strip().split('\n')
+    headers = [h.strip() for h in table[0].split('|')[1:-1]]
+    results = []
+    
+    # Find the target column index
+    target_col_index = None
+    for i, header in enumerate(headers):
+        if header.lower() == target_key.lower():
+            target_col_index = i
+            break
+    
+    if target_col_index is None:
+        return Command(update={"messages": [ToolMessage(f"Column '{target_key}' not found in test cases table.", tool_call_id=tool_call_id)]})
+    
+    for row in table[2:]:  # skip header and separator
+        cols = [c.strip() for c in row.split('|')[1:-1]]
+        if len(cols) == len(headers):
+            # Check only the target column for the match
+            if target_col_index < len(cols) and str(cols[target_col_index]).lower() == str(target_value).lower():
+                tc_dict = dict(zip(headers, cols))
+                results.append(tc_dict)
+    
+    return Command(update={"messages": [ToolMessage(content=str(results), tool_call_id=tool_call_id)]})
 
 @tool
 def change_requirement_info_tool(
@@ -418,9 +481,106 @@ def change_requirement_info_tool(
     except Exception as e:
         return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
 
-# ...existing code...
 
-# ...existing code...
+
+@tool
+def get_testcase_info_from_description_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    description: Annotated[str, "The description that the tool uses to find full information"]
+) -> Command:
+    """
+    Inquiry test cases that meet the description and get the full information of those test cases (ID, description, expected result, etc).
+
+    **Behavior:**
+    - Reads test cases from the project's test cases Markdown file.
+    - Uses semantic matching to find test cases that align with the given description.
+
+    **Outputs:**
+    - Adds a Tool message to `state["messages"]`. If successful, the tool message is a list containing dictionaries of the aligned test cases, else the message is an empty list.
+
+    **Note**
+    - This tool uses semantic matching to locate test cases. If it is possible to locate the test case by ID or other exact attributes, use get_testcase_info_by_lookup_tool instead.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    tc_path = f"data/project-{project_id}/artifacts/test_cases.md"
+    if not os.path.exists(tc_path):
+        return Command(update={"messages": [ToolMessage(content="Test cases file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.testcase_info_from_description import testcase_info_from_description
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Test case info module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        tool_answer_string = testcase_info_from_description(description, tc_path)
+        return Command(update={"messages": [ToolMessage(content=tool_answer_string, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
+@tool
+def change_testcase_info_tool(
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    tc_id: Annotated[str, "The ID of the test case that needs change. The tool uses this to find the targeted test case"],
+    attribute: Annotated[str, 'The attribute inside the test case dictionary that needs change. Must be a valid column name'],
+    value: Annotated[str, 'The value that the attribute of the test case will change into']
+) -> Command:
+    """
+    Change the information of a test case (i.e., update one attribute value in the Markdown test cases table).
+
+    **Behavior**
+    - Finds the test case row by ID in the Markdown file.
+    - Updates the specified attribute (column) with the new value.
+    - If the test case or attribute does not exist, returns an error ToolMessage.
+
+    **Output**
+    - Updates the test cases Markdown file in-place.
+    - Adds a success ToolMessage.
+
+    **Note**
+    - The test cases file must exist.
+    - Use other tools to locate the test case ID if needed.
+    """
+    import os
+    import sys
+
+    project_id = state.get("project_id")
+    if not project_id:
+        return Command(update={"messages": [ToolMessage(content="Error: Missing project ID.", tool_call_id=tool_call_id)]})
+
+    tc_path = f"data/project-{project_id}/artifacts/test_cases.md"
+    if not os.path.exists(tc_path):
+        return Command(update={"messages": [ToolMessage(content="Test cases file not found.", tool_call_id=tool_call_id)]})
+
+    # Add ai/mcp to sys.path for import
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if root not in sys.path:
+        sys.path.append(root)
+    try:
+        from ai.mcp.change_testcase_info import change_testcase_info
+    except ImportError:
+        return Command(update={"messages": [ToolMessage(content="Error: Change test case module not available.", tool_call_id=tool_call_id)]})
+
+    try:
+        result, msg = change_testcase_info(tc_path, tc_id, attribute, value)
+        if result:
+            return Command(update={"messages": [ToolMessage(content="Successfully modified the test case.", tool_call_id=tool_call_id)]})
+        else:
+            return Command(update={"messages": [ToolMessage(content=msg, tool_call_id=tool_call_id)]})
+    except Exception as e:
+        return Command(update={"messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)]})
+
 # LLM initialization
 # llm = ChatDeepSeek(
 #     model=settings.llm.model_name,
@@ -456,8 +616,17 @@ llm_non_streaming = ChatGoogleGenerativeAI(
     api_key = "AIzaSyB3F2BGLaXhgxn4p0wuB1fPKycapCxk2no",
 )
 
-tools = [generate_testCases_from_RTM_tool, generate_requirements_from_document_pdf_tool, generate_rtm_fromRequirements_tool, get_requirement_info_by_lookup_tool,
-         get_requirement_info_from_description_tool,change_requirement_info_tool]
+tools = [
+    generate_testCases_from_RTM_tool, 
+    generate_requirements_from_document_pdf_tool, 
+    generate_rtm_fromRequirements_tool, 
+    get_requirement_info_by_lookup_tool,
+    get_requirement_info_from_description_tool,
+    change_requirement_info_tool,
+    get_testcase_info_by_lookup_tool,
+    get_testcase_info_from_description_tool,
+    change_testcase_info_tool
+]
 llm_with_tools = llm_non_streaming.bind_tools(tools)  # Use non-streaming for tools
 tools_node = ToolNode(tools)
 

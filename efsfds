@@ -1,0 +1,220 @@
+[33mcommit ccd3c1c92ebe26dfceb892e1f9cca7e8bd7c7f1f[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Sep 9 10:23:22 2025 +0700
+
+    fix async problem and docker thing
+
+[33mcommit 59bfabb7351f3f05b8fb034235a9b6cf0eb1b85f[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Mon Sep 8 15:29:31 2025 +0700
+
+    srs full
+
+[33mcommit 20b2f2a5a7c7a4161ed724918289532d96774d03[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Fri Sep 5 13:09:30 2025 +0700
+
+    async APIs backend
+
+[33mcommit b0f008b487883c83cfe29fac400facd42f985fc6[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Fri Sep 5 13:08:50 2025 +0700
+
+    remove deprecated code
+
+[33mcommit c97b96e1b1db7af11347dc0f0867295d05b0ab0d[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Wed Sep 3 10:40:21 2025 +0700
+
+    add email validation to the login
+
+[33mcommit eecb6f0165cfe63c421bc83431007e96a8a27121[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 26 21:27:27 2025 +0700
+
+    fix gen testcases
+
+[33mcommit b26bd63bc25d524ee2c15057f2ee2d8992ce51c5[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 26 20:47:17 2025 +0700
+
+    bugfix
+
+[33mcommit 2728ce3a11588fd917bd929c260d53b7ed7a8c71[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 26 12:18:32 2025 +0700
+
+    the doc for new authz
+
+[33mcommit 56f845d74040a701c97c5e93e86f8cd87c26c59c[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 26 12:01:01 2025 +0700
+
+    update more ai tools
+
+[33mcommit a4e2ec8eec813f86c08c15398ea15fa00fe49d8b[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 26 10:13:21 2025 +0700
+
+    update project_member role system
+
+[33mcommit 0d50d65402903e42491cca40fa4d88a13fad60da[m
+Author: Phuc Tran <S3924715@rmit.edu.vn>
+Date:   Thu Aug 21 22:16:56 2025 +0700
+
+    add langchain_google_genai to requirements
+
+[33mcommit 104734b3fd18c1a03d221a534d33124b27b41838[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Thu Aug 21 21:52:49 2025 +0700
+
+    mock file
+
+[33mcommit 2bf91b1d465068de4949f4db780d5abf305c1267[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Thu Aug 21 21:50:27 2025 +0700
+
+    update prompt ai
+
+[33mcommit c90fe59f8a4e1b279012f234e2e498e1bcb833ee[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Mon Aug 18 14:09:06 2025 +0700
+
+    add authz
+    
+    NOT  fully tested
+
+[33mcommit ba7f693837b5e87832f3817165f749554cc1ea4b[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Sun Aug 17 16:21:02 2025 +0700
+
+    .
+
+[33mcommit 37b0f273ee2d5a969d642666ac2cdc1a72d361a4[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 12 10:06:22 2025 +0700
+
+    remove no needed file
+
+[33mcommit e7651afd0ebadf276d3bc0369e2d73c79fdd2b95[m[33m ([m[1;32mtool-integration[m[33m)[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Wed Aug 6 12:01:16 2025 +0700
+
+    fixed (not test the matix gen yet)
+
+[33mcommit 56376a6d4816f50bf3a7ea3efa3aeae9b5b98be5[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 5 09:24:48 2025 +0700
+
+    success call tool red from chat
+
+[33mcommit b5d58706f7d92f0ab856ed4f1356b7d1fb4f0b7e[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 5 09:24:29 2025 +0700
+
+    update things helps coding agent understand curr state
+
+[33mcommit ac73b22aca3bfc1429748014ec24f61a7a03ec30[m
+Merge: 7e77c6a bf9ebbf
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Aug 5 09:22:29 2025 +0700
+
+    Merge branch 'main' of https://github.com/TrienVo397/BE--GenAI-Power-Software-Testing-Assist-Platform
+
+[33mcommit bf9ebbf1152e551b1b75fdd60ed0441a575cebff[m
+Author: Tran Dai Phuc <daiphuc158@gmail.com>
+Date:   Tue Jul 29 10:32:37 2025 +0700
+
+    Add AI templates for checklist, requirements, and test cases
+
+[33mcommit 7e77c6a31329ff48aae9f2add565494fb753b3d3[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Fri Jul 18 11:39:31 2025 +0700
+
+    add api http stream and chat session for chatbot feature
+
+[33mcommit c98e5e34da79b550a00b4593af54f6f7d658319a[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Thu Jul 17 09:21:20 2025 +0700
+
+    call LLM ok not fix the http stream
+
+[33mcommit bfafb483064e75c035daebeb0f1a9a8f516f1d0a[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Jul 15 15:51:26 2025 +0700
+
+    http stream chat API backend
+
+[33mcommit 0686a649d41d9907beaf7752aa8a0250a993524b[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Thu Jul 10 17:04:48 2025 +0700
+
+    Add ai-agent example
+    
+    The chat-session-chatMsg is not finalize
+
+[33mcommit b07a22fc14042858ab38caf30015a430b3d0f69d[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Tue Jul 1 12:06:33 2025 +0700
+
+    Add file edit and template
+
+[33mcommit 6418e1eba31e433cd863674a6b95b5a34b01ff58[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Thu Jun 26 10:30:29 2025 +0700
+
+    File Explorer APIs
+
+[33mcommit 23df5fe545035cf56ccd756c5276c720a948f361[m
+Author: Hoang Nguyen <35418477+catre321@users.noreply.github.com>
+Date:   Wed Jun 25 10:32:39 2025 +0700
+
+    fix projects API schema
+
+[33mcommit 9fee469f50bfefafcf388962b9274796d11bff0d[m
+Author: Hoang Nguyen <hn16042002@gmail.com>
+Date:   Tue Jun 17 15:30:58 2025 +0700
+
+    switch to FastAPI+SQLModel
+
+[33mcommit 1390b9fe12c564a25bc9080d3ba015fe9c6aa926[m
+Author: Hoang Nguyen <hn16042002@gmail.com>
+Date:   Tue Jun 3 13:57:07 2025 +0700
+
+    Delete venv directory
+
+[33mcommit 6bbc5390351c128bd0125851287fa35b24d00b7c[m
+Author: Hoang Nguyen <hn16042002@gmail.com>
+Date:   Fri May 30 10:14:08 2025 +0700
+
+    add ignore
+
+[33mcommit 33d4f151b68097dd04e00b5314ed02a6d79816f8[m
+Author: Hoang Nguyen <hn16042002@gmail.com>
+Date:   Fri May 30 09:55:24 2025 +0700
+
+    Update .gitignore
+
+[33mcommit 32b516681bef4880169b88638033589339be522e[m
+Author: Lai Minh Tri <s3927026@rmit.edu.vn>
+Date:   Wed May 28 16:09:18 2025 +0700
+
+    Initial commit with .gitignore
+
+[33mcommit 10f5f3bc959d3b372ba45b3fe04aad2d695ee722[m
+Author: Lai Minh Tri <s3927026@rmit.edu.vn>
+Date:   Wed May 28 16:05:23 2025 +0700
+
+    Initial commit
+
+[33mcommit fdcb7eb8998d6bcfe31656a2a242e8fd0867b5bf[m[33m ([m[1;31morigin/user-serializers[m[33m)[m
+Author: metalboxxx <100556232+metalboxxx@users.noreply.github.com>
+Date:   Tue May 13 22:12:27 2025 +0700
+
+    Add files via upload
+
+[33mcommit 13ec2ac5ee29e59426aef55c1a068392f341097d[m
+Author: TrienVo397 <132914998+TrienVo397@users.noreply.github.com>
+Date:   Mon May 12 10:33:38 2025 +0700
+
+    Initial commit
